@@ -12,8 +12,6 @@ export default function handler(req, res) {
 .wordStatus.weak{background:#fff1f3;color:#d84662;border:1px solid #efb4c0}
 .wordStatus.unseen{background:#edf5ff;color:#3471cb;border:1px solid #bfd8f5}
 .deleteWordBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
-.deleteWordBtn:disabled{opacity:.55;cursor:not-allowed}
-.deleteAllWordsBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
 .wordItem{position:relative}
 .wordItem .wordStatus{margin:7px 0 0}
 </style>
@@ -25,9 +23,8 @@ export default function handler(req, res) {
   function save(){return app('save')()}
   function words(){return app('words')}
   function stateFor(word){return app('stateFor')(word)}
-  function progress(){return app('progress')}
-  function esc(v){return String(v==null?'':v).replace(/[&<>\\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]||m})}
-  function splitModels(v){return String(v||'').split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
+  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m})}
+  function splitModels(v){return String(v||'').split(/[\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
   function savedModels(p){return splitModels(p&&p.model)}
 
   function statusInfo(word){
@@ -54,17 +51,13 @@ export default function handler(req, res) {
   function ensureWordControls(){
     var actions=document.querySelector('#flash .titlebar .actions');
     if(actions&&!document.getElementById('deleteCurrentWord')){
-      var add=actions.querySelector('button[onclick*="openAdd"]');
+      var add=actions.querySelector('button[onclick*=\"openAdd\"]');
       var b=document.createElement('button');
       b.id='deleteCurrentWord';b.className='btn deleteWordBtn';b.type='button';b.textContent='Delete Word';b.onclick=window.deleteCurrentWord;
       if(add)actions.insertBefore(b,add);else actions.prepend(b);
     }
-    var addButton=actions&&actions.querySelector('button[onclick*="openAdd"]');
-    if(actions&&!document.getElementById('deleteAllWords')){
-      var b2=document.createElement('button');
-      b2.id='deleteAllWords';b2.className='btn deleteAllWordsBtn';b2.type='button';b2.textContent='Delete All Words';b2.onclick=window.deleteAllWords;
-      if(addButton)actions.insertBefore(b2,addButton);else actions.appendChild(b2);
-    }
+    var oldAll=document.getElementById('deleteAllWords');
+    if(oldAll)oldAll.remove();
     var wordEl=document.getElementById('word');
     if(wordEl&&!document.getElementById('wordStatus')){
       var s=document.createElement('span');
@@ -75,32 +68,18 @@ export default function handler(req, res) {
   }
 
   window.deleteCurrentWord=function(){
-    var ws=words(),idx=app('idx'),seed=app('seed'),d=ws[idx];
-    if(!d||idx<seed.length){alert('Built-in SSC words cannot be deleted.');return}
-    if(!window.confirm('Delete “'+d.word+'” from My Vocabulary?'))return;
+    var ws=words(),seed=app('seed'),word=currentWord();
+    var idx=ws.findIndex(function(d){return d&&String(d.word||'').trim()===word});
+    if(idx<0){alert('This word is not found in your vocabulary.');return}
+    if(idx<seed.length){alert('Built-in SSC words cannot be deleted.');return}
+    if(!window.confirm('Delete “'+ws[idx].word+'” from My Vocabulary?'))return;
     ws.splice(idx,1);
-    if(idx>=ws.length)app('idx = Math.max(0, words.length - 1)');
+    try{app('idx = Math.max(0, Math.min(idx, words.length - 1))')}catch(e){}
     save();
     app('render')();
     if(document.getElementById('vocab')?.classList.contains('active'))app('renderList')();
     ensureWordControls();
     var t=document.getElementById('toast');if(t){t.textContent='Word deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
-  };
-
-  window.deleteAllWords=function(){
-    var ws=words(),seed=app('seed');
-    var count=Math.max(0,ws.length-seed.length);
-    if(!count){alert('There are no user-added words to delete.');return}
-    if(!window.confirm('Delete all '+count+' user-added words? Built-in SSC words will remain.'))return;
-    ws.splice(seed.length);
-    var p=progress();
-    Object.keys(p).forEach(function(k){if(!seed.some(function(d){return d.word===k}))delete p[k]});
-    app('idx = Math.min(idx, words.length - 1)');
-    save();
-    app('render')();
-    app('renderList')();
-    ensureWordControls();
-    var t=document.getElementById('toast');if(t){t.textContent='All user-added words deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
   };
 
   window.editProvider=function(id){
@@ -129,7 +108,7 @@ export default function handler(req, res) {
     if(!p){status.textContent='Provider no longer exists.';return}
     var name=document.getElementById('pName').value.trim();
     var type=document.getElementById('pType').value;
-    var base=document.getElementById('pBase').value.trim().replace(/\\/$/,'');
+    var base=document.getElementById('pBase').value.trim().replace(/\/$/,'');
     var models=splitModels(document.getElementById('pModel').value);
     var user=document.getElementById('pUser').value.trim();
     var key=document.getElementById('pKey').value.trim();
@@ -159,7 +138,7 @@ export default function handler(req, res) {
 
   function addEditButton(box,p){
     if(!box||!p||box.querySelector('[data-edit-provider]'))return;
-    var actions=box.querySelector('.providerActions')||box.querySelector('div[style*="margin-top"]');
+    var actions=box.querySelector('.providerActions')||box.querySelector('div[style*=\"margin-top\"]');
     if(!actions)return;
     var b=document.createElement('button');
     b.className='btn'; b.type='button'; b.textContent='Edit'; b.setAttribute('data-edit-provider','1');
@@ -183,9 +162,9 @@ export default function handler(req, res) {
     var p=providers().find(function(x){return x.id===providerId})||active(type);
     var sel=document.getElementById(selectId),st=statusId?document.getElementById(statusId):null;
     if(!sel)return;
-    if(!p){sel.innerHTML='<option value="">No provider</option>';if(st)st.textContent='';return}
+    if(!p){sel.innerHTML='<option value=\"\">No provider</option>';if(st)st.textContent='';return}
     var models=savedModels(p);
-    sel.innerHTML=models.length?models.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>'}).join(''):'<option value="">No saved model</option>';
+    sel.innerHTML=models.length?models.map(function(m){return '<option value=\"'+esc(m)+'\">'+esc(m)+'</option>'}).join(''):'<option value=\"\">No saved model</option>';
     if(st)st.textContent=models.length?models.length+' saved model'+(models.length===1?'':'s')+' available.':'No saved model. Add models in AI Settings.';
   }
   window.fillModels=fillSaved;
@@ -194,7 +173,7 @@ export default function handler(req, res) {
   function patchProviderSelect(id,type){
     var el=document.getElementById(id);if(!el)return;
     var old=el.value,ps=providers().filter(function(p){return p.type===type});
-    el.innerHTML=ps.length?ps.map(function(p){var ms=savedModels(p);var label=ms.length?ms.length+' saved model'+(ms.length===1?'':'s'):'No model';return '<option value="'+esc(p.id)+'">'+esc(p.name)+' — '+esc(label)+'</option>'}).join(''):'<option value="">No '+type+' provider configured</option>';
+    el.innerHTML=ps.length?ps.map(function(p){var ms=savedModels(p);var label=ms.length?ms.length+' saved model'+(ms.length===1?'':'s'):'No model';return '<option value=\"'+esc(p.id)+'\">'+esc(p.name)+' — '+esc(label)+'</option>'}).join(''):'<option value=\"\">No '+type+' provider configured</option>';
     if(ps.some(function(p){return p.id===old}))el.value=old;
   }
 
@@ -209,7 +188,7 @@ export default function handler(req, res) {
 
   var oldOpenImage=window.openImagePicker;
   window.openImagePicker=function(){if(oldOpenImage)oldOpenImage();patchProviderSelect('imageProvider','image');fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
-  window.onImageProviderChange=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
+  window.onImageProviderChange=function(){fillSaved('image',document.getElementById('imageProvider').value,'imagePickerStatus')};
   window.refreshImageModels=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
 
   var oldRenderList=window.renderList;
