@@ -3,25 +3,15 @@
   const source='https://raw.githubusercontent.com/purendar950/Transcript-forever/69298cd161d864220e93700978f196f2886c8e1c/index.html';
   try{
     let html=await (await fetch(source,{cache:'no-store'})).text();
-
-    // Remove the requested sections from the visible UI.
+    html=html.replace('</head>','<style>.topbar{display:none!important}</style></head>');
+    const old="document.getElementById('answerBox').innerHTML='<strong>Correct Answer:</strong> '+String.fromCharCode(65+d.ans)+'. '+d.opts[d.ans];";
+    const fixed="document.getElementById('answerBox').innerHTML='<span style=\"color:#6a7180\">Select an option to reveal the answer.</span>';document.querySelectorAll('#opts input').forEach((el,n)=>el.addEventListener('change',()=>{const correct=n===d.ans;document.getElementById('answerBox').innerHTML=(correct?'<strong style=\"color:#21964c\">Correct!</strong> ':'<strong style=\"color:#df4d68\">Incorrect.</strong> ')+'Correct Answer: '+String.fromCharCode(65+d.ans)+'. '+d.opts[d.ans]}));";
+    if(!html.includes(old)) throw new Error('Expected answer-render code was not found.');
+    html=html.replace(old,fixed);
     html=html.replace(/<div class="bottomgrid">[\s\S]*?<\/div><\/article>/,'</article>');
     html=html.replace(/<div class="block"><h3>Cloze Test<\/h3>[\s\S]*?<\/div><div class="block"><h3>Reverse Recall<\/h3>[\s\S]*?<\/div>/,'');
-
-    // The removed sections must also be removed from the render loop;
-    // otherwise a missing DOM element stops rendering before Practice/Confusing Words.
-    const oldLoop="for(let k of ['word','pron','posTag','meaning','hindi','hinglish','visual','example','mnemonic','story','core','pyq','source','q','cloze','reverse'])document.getElementById(k).textContent=d[k];";
-    const newLoop="for(let k of ['word','pron','posTag','meaning','hindi','hinglish','visual','example','mnemonic','story','core','q'])document.getElementById(k).textContent=d[k];";
-    if(!html.includes(oldLoop)) throw new Error('Expected render loop was not found.');
-    html=html.replace(oldLoop,newLoop);
-
-    // Do not reveal the answer until the learner selects an option.
-    const oldAnswer="document.getElementById('answerBox').innerHTML='<strong>Correct Answer:</strong> '+String.fromCharCode(65+d.ans)+'. '+d.opts[d.ans];";
-    const newAnswer="document.getElementById('answerBox').innerHTML='<span style=\"color:#6a7180\">Select an option to reveal the answer.</span>';document.querySelectorAll('#opts input').forEach((el,n)=>el.addEventListener('change',()=>{const correct=n===d.ans;document.getElementById('answerBox').innerHTML=(correct?'<strong style=\"color:#21964c\">Correct!</strong> ':'<strong style=\"color:#df4d68\">Incorrect.</strong> ')+'Correct Answer: '+String.fromCharCode(65+d.ans)+'. '+d.opts[d.ans]}));";
-    if(!html.includes(oldAnswer)) throw new Error('Expected answer-render code was not found.');
-    html=html.replace(oldAnswer,newAnswer);
-
+    html=html.replace(/for\(let k of \['word','pron','posTag','meaning','hindi','hinglish','visual','example','mnemonic','story','core','pyq','source','q','cloze','reverse'\]\)/,"for(let k of ['word','pron','posTag','meaning','hindi','hinglish','visual','example','mnemonic','story','core','q'])");
     document.open();document.write(html);document.close();
-  }catch(e){document.body.innerHTML='<p style="font:16px system-ui;padding:30px">Unable to load the vocabulary app. Please refresh.</p>';console.error(e)}
+  }catch(e){document.body.innerHTML='<p style=\"font:16px system-ui;padding:30px\">Unable to load the vocabulary app. Please refresh.</p>';console.error(e)}
 })();
 </script></body></html>
