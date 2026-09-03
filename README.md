@@ -20,6 +20,12 @@ This repository contains the active **SSC Vocabulary AI** project. Old/unused tr
 - Phonetic mnemonics
 - Visual memory stories
 - Core idea and confusion words
+- Vocabulary status shown on flashcards and My Vocabulary
+- **LEARNED** status — green
+- **WEAK** status — red
+- **NOT READY** status — blue
+- Delete control for user-added vocabulary words
+- Seed/official vocabulary cannot be accidentally deleted
 
 ### AI Settings
 - Multiple Text AI providers
@@ -47,6 +53,18 @@ This repository contains the active **SSC Vocabulary AI** project. Old/unused tr
 - Dedicated Image AI configuration
 - Supports image-generation providers such as Pollinations AI
 - Image generation is separate from Text AI because text models do not necessarily support image generation
+
+## Vocabulary Status Logic
+
+Each word has a learning status stored locally in the browser:
+
+| Status | Color | Meaning |
+|---|---|---|
+| **NOT READY** | Blue | Not yet successfully learned/reviewed |
+| **LEARNED** | Green | Answered correctly / marked as known |
+| **WEAK** | Red | Answered incorrectly, difficult, or forgotten |
+
+Quiz answers and flashcard rating buttons update the same status system. This keeps **All Words**, **Weak Words**, and **Learned Words** quiz modes synchronized.
 
 ## Project Structure
 
