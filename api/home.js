@@ -7,6 +7,13 @@ export default function handler(req, res) {
     const injection = `
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.wordStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:800;margin-left:6px}
+.wordStatus.learned{background:#e8f8ee;color:#14894a;border:1px solid #b8e1c4}
+.wordStatus.weak{background:#fff1f3;color:#d84662;border:1px solid #efb4c0}
+.wordStatus.unseen{background:#edf5ff;color:#3471cb;border:1px solid #bfd8f5}
+.deleteWordBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
+.wordItem{position:relative}
+.wordItem .wordStatus{margin:7px 0 0}
 </style>
 <script>
 (function(){
@@ -14,9 +21,53 @@ export default function handler(req, res) {
   function providers(){return app('providers')}
   function active(type){return app('active')(type)}
   function save(){return app('save')()}
+  function words(){return app('words')}
+  function stateFor(word){return app('stateFor')(word)}
+  function esc(v){return String(v==null?'':v).replace(/[&<>\\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]||m})}
   function splitModels(v){return String(v||'').split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
-  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m})}
   function savedModels(p){return splitModels(p&&p.model)}
+
+  function statusInfo(word){
+    var s=stateFor(word),status=s.status||'unseen';
+    if(status==='learned')return {label:'LEARNED',cls:'learned'};
+    if(status==='weak')return {label:'WEAK',cls:'weak'};
+    return {label:'NOT READY',cls:'unseen'};
+  }
+
+  function updateCurrentStatus(){
+    var ws=words(),idx=app('idx'),d=ws[idx],el=document.getElementById('wordStatus');
+    if(!el||!d)return;
+    var info=statusInfo(d.word);el.textContent=info.label;el.className='wordStatus '+info.cls;
+    var del=document.getElementById('deleteCurrentWord');
+    if(del)del.style.display=idx>=app('seed').length?'inline-block':'none';
+  }
+
+  window.deleteCurrentWord=function(){
+    var ws=words(),idx=app('idx'),seed=app('seed'),d=ws[idx];
+    if(!d||idx<seed.length)return;
+    if(!window.confirm('Delete "'+d.word+'" from My Vocabulary?'))return;
+    ws.splice(idx,1);
+    if(idx>=ws.length)app('setIdx')(Math.max(0,ws.length-1));
+    else app('setIdx')(idx);
+    save();
+    app('render')();
+    if(document.getElementById('vocab')?.classList.contains('active'))app('renderList')();
+    var t=document.getElementById('toast');if(t){t.textContent='Word deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
+  };
+
+  function ensureWordControls(){
+    var actions=document.querySelector('#flash .titlebar .actions');
+    if(actions&&!document.getElementById('deleteCurrentWord')){
+      var add=actions.querySelector('button[onclick*="openAdd"]');
+      var b=document.createElement('button');b.id='deleteCurrentWord';b.className='btn deleteWordBtn';b.type='button';b.textContent='Delete Word';b.onclick=window.deleteCurrentWord;
+      if(add)actions.insertBefore(b,add);else actions.prepend(b);
+    }
+    var tag=document.getElementById('pos');
+    if(tag&&!document.getElementById('wordStatus')){
+      var s=document.createElement('span');s.id='wordStatus';s.className='wordStatus unseen';s.textContent='NOT READY';tag.insertAdjacentElement('afterend',s);
+    }
+    updateCurrentStatus();
+  }
 
   window.editProvider=function(id){
     var p=providers().find(function(x){return x.id===id}); if(!p)return;
@@ -118,6 +169,11 @@ export default function handler(req, res) {
     if(oldRender)oldRender();
     setTimeout(ensureEditButtons,0);
   };
+  var oldRenderFlash=window.render;
+  window.render=function(){
+    if(oldRenderFlash)oldRenderFlash();
+    setTimeout(function(){ensureWordControls();ensureEditButtons()},0);
+  };
   var oldOpenAdd=window.openAdd;
   window.openAdd=function(){
     if(oldOpenAdd)oldOpenAdd();
@@ -136,7 +192,22 @@ export default function handler(req, res) {
   window.onImageProviderChange=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
   window.refreshImageModels=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
 
+  var oldRenderList=window.renderList;
+  window.renderList=function(){
+    if(oldRenderList)oldRenderList();
+    setTimeout(function(){
+      var ws=words(),seed=app('seed');
+      document.querySelectorAll('#wordList .wordItem').forEach(function(box,i){
+        var d=ws[seed.length+i];if(!d)return;
+        var info=statusInfo(d.word),badge=box.querySelector('.wordStatus');
+        if(!badge){badge=document.createElement('span');box.appendChild(badge)}
+        badge.className='wordStatus '+info.cls;badge.textContent=info.label;
+      });
+    },0);
+  };
+
   function start(){
+    ensureWordControls();
     ensureEditButtons();
     ['textProviders','imageProviders'].forEach(function(cid){
       var root=document.getElementById(cid);if(!root)return;
