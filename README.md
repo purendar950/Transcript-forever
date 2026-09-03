@@ -49,6 +49,25 @@ This repository contains the active **SSC Vocabulary AI** project. Old/unused tr
 - Wrong answer → Weak
 - Review timing based on performance
 
+### Cloud Sync (Supabase)
+- Sync vocabulary, progress, providers, and quiz history across devices
+- Code-based auth (no email required) — 8-character recovery code
+- Images stored locally only (not synced to save bandwidth)
+- Auto-sync on every save with debounced uploads
+- Offline-first: works without Supabase, sync when available
+- Merge strategy: remote + local, no data loss
+
+## Cloud Sync Setup
+
+1. Create a free account at [supabase.com](https://supabase.com)
+2. Create a new project
+3. Go to **SQL Editor** and run the contents of `supabase-schema.sql`
+4. Copy your **Project URL** and **anon/public key** from Settings → API
+5. In the app, go to **AI Settings → Cloud Sync (Supabase)**
+6. Paste your URL and anon key, click **Save Config**
+7. Click **Create New Account** — you'll get an 8-character code
+8. **Save this code** — use it to sign in from other devices
+
 ### Image Generation
 - Dedicated Image AI configuration
 - Supports image-generation providers such as Pollinations AI
@@ -74,6 +93,7 @@ Quiz answers and flashcard rating buttons update the same status system. This ke
 ├── api/
 │   ├── ai.js           # AI provider proxy and image/text API handling
 │   └── home.js         # Application HTML delivery and UI compatibility layer
+├── supabase-schema.sql # SQL schema for Supabase cloud sync
 ├── vercel.json         # Vercel routing configuration
 ├── README.md
 └── .gitignore
