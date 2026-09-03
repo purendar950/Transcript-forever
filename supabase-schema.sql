@@ -1,6 +1,5 @@
 -- SSC Vocabulary AI — Supabase Schema (Email/Password Auth)
 -- Run this in your Supabase SQL Editor (https://supabase.com → SQL Editor)
--- Supabase Auth (email/password) is enabled by default — no sb_users table needed.
 
 -- Vocabulary words (images stored locally, not synced)
 CREATE TABLE IF NOT EXISTS sb_words(
@@ -38,13 +37,18 @@ CREATE TABLE IF NOT EXISTS sb_quiz_history(
   created_at timestamptz DEFAULT now()
 );
 
--- Enable RLS (Row Level Security)
+-- Enable RLS
 ALTER TABLE sb_words ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sb_providers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sb_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sb_quiz_history ENABLE ROW LEVEL SECURITY;
 
--- RLS policies scoped to the signed-in user (auth.uid())
+-- Drop existing policies if they exist, then recreate
+DROP POLICY IF EXISTS "Users can manage own words" ON sb_words;
+DROP POLICY IF EXISTS "Users can manage own providers" ON sb_providers;
+DROP POLICY IF EXISTS "Users can manage own progress" ON sb_progress;
+DROP POLICY IF EXISTS "Users can manage own quiz_history" ON sb_quiz_history;
+
 CREATE POLICY "Users can manage own words" ON sb_words FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users can manage own providers" ON sb_providers FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "Users can manage own progress" ON sb_progress FOR ALL USING (auth.uid() = user_id);
