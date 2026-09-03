@@ -7,6 +7,8 @@
     const fixed="document.getElementById('answerBox').innerHTML='<span style=\"color:#6a7180\">Select an option to reveal the answer.</span>';document.querySelectorAll('#opts input').forEach((el,n)=>el.addEventListener('change',()=>{const correct=n===d.ans;document.getElementById('answerBox').innerHTML=(correct?'<strong style=\"color:#21964c\">Correct!</strong> ':'<strong style=\"color:#df4d68\">Incorrect.</strong> ')+'Correct Answer: '+String.fromCharCode(65+d.ans)+'. '+d.opts[d.ans]}));";
     if(!html.includes(old)) throw new Error('Expected answer-render code was not found.');
     html=html.replace(old,fixed);
+    html=html.replace(/<div class="bottomgrid">[\s\S]*?<\/div><\/article>/,'</article>');
+    html=html.replace(/<div class="block"><h3>Cloze Test<\/h3>[\s\S]*?<\/div><div class="block"><h3>Reverse Recall<\/h3>[\s\S]*?<\/div>/,'');
     document.open();document.write(html);document.close();
   }catch(e){document.body.innerHTML='<p style="font:16px system-ui;padding:30px">Unable to load the vocabulary app. Please refresh.</p>';console.error(e)}
 })();
