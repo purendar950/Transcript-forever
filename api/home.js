@@ -47,8 +47,7 @@ export default function handler(req, res) {
     if(!d||idx<seed.length)return;
     if(!window.confirm('Delete "'+d.word+'" from My Vocabulary?'))return;
     ws.splice(idx,1);
-    if(idx>=ws.length)app('setIdx')(Math.max(0,ws.length-1));
-    else app('setIdx')(idx);
+    app('idx = Math.min('+Math.max(0,idx)+', words.length - 1)');
     save();
     app('render')();
     if(document.getElementById('vocab')?.classList.contains('active'))app('renderList')();
