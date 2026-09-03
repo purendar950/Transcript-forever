@@ -9,43 +9,57 @@ export default async function handler(req, res) {
     const url = new URL(baseUrl);
     if (url.protocol !== 'https:') return res.status(400).json({ error: 'HTTPS is required' });
     const host = url.hostname.toLowerCase();
-    const blocked = /^(localhost|127\\.|0\\.|10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.|169\\.254\\.|::1$)/.test(host);
+    const blocked = /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|169\.254\.|::1$)/.test(host);
     if (blocked || host.endsWith('.local') || host.endsWith('.internal')) return res.status(400).json({ error: 'Private/local endpoints are not allowed.' });
 
     let target;
     let method = 'GET';
     let body;
+
     if (action === 'chat') {
       target = new URL('/v1/chat/completions', url).toString();
       method = 'POST';
       body = JSON.stringify({ model, messages: messages || [{ role: 'user', content: 'Reply with OK only.' }], max_tokens: 2400 });
     } else if (action === 'image') {
-      // Pollinations' native image route returns the actual image bytes.
-      // Use it for reliability, then convert the result to b64_json for the frontend.
       if (host === 'gen.pollinations.ai') {
+        const width = Number((size || '1024x1024').split('x')[0]) || 1024;
+        const height = Number((size || '1024x1024').split('x')[1]) || 1024;
         const nativeUrl = new URL('/image/' + encodeURIComponent(prompt || 'educational vocabulary illustration'), url);
-        nativeUrl.searchParams.set('model', model);
-        if (size) nativeUrl.searchParams.set('width', String(Number((size.split('x')[0] || 1024))));
-        if (size) nativeUrl.searchParams.set('height', String(Number((size.split('x')[1] || 1024))));
-        target = nativeUrl.toString();
-        method = 'GET';
-        const upstream = await fetch(target, { method, headers: { Authorization: `Bearer ${apiKey}` } });
-        const contentType = upstream.headers.get('content-type') || '';
+        nativeUrl.searchParams.set('model', model || 'flux');
+        nativeUrl.searchParams.set('width', String(width));
+        nativeUrl.searchParams.set('height', String(height));
+        nativeUrl.searchParams.set('nologo', 'true');
+        nativeUrl.searchParams.set('key', apiKey);
+
+        let upstream = await fetch(nativeUrl.toString(), { method: 'GET' });
+        if (upstream.ok) {
+          const contentType = upstream.headers.get('content-type') || '';
+          if (contentType.startsWith('image/')) {
+            const b64 = Buffer.from(await upstream.arrayBuffer()).toString('base64');
+            return res.status(200).json({ data: [{ b64_json: b64 }] });
+          }
+        }
+
+        // Fallback to Pollinations' OpenAI-compatible image endpoint.
+        target = new URL('/v1/images/generations', url).toString();
+        method = 'POST';
+        body = JSON.stringify({ model: model || 'flux', prompt, size, n: 1 });
+        upstream = await fetch(target, {
+          method,
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body
+        });
+        const text = await upstream.text();
         if (!upstream.ok) {
-          const errorText = await upstream.text();
-          return res.status(upstream.status).json({ error: errorText || 'Pollinations image generation failed' });
+          return res.status(upstream.status).json({ error: 'Pollinations image generation failed', detail: text.slice(0, 1500) });
         }
-        if (!contentType.startsWith('image/')) {
-          const errorText = await upstream.text();
-          return res.status(502).json({ error: errorText || 'Pollinations did not return an image.' });
-        }
-        const bytes = new Uint8Array(await upstream.arrayBuffer());
-        let binary = '';
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-        const b64 = Buffer.from(binary, 'binary').toString('base64');
-        return res.status(200).json({ data: [{ b64_json: b64 }] });
+        try {
+          const json = JSON.parse(text);
+          if (json?.data?.[0]?.b64_json || json?.data?.[0]?.url) return res.status(200).json(json);
+        } catch {}
+        return res.status(502).json({ error: 'Pollinations returned an unexpected image response.', detail: text.slice(0, 1000) });
       }
+
       target = new URL('/v1/images/generations', url).toString();
       method = 'POST';
       body = JSON.stringify({ model, prompt, size, n: 1 });
