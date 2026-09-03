@@ -87,15 +87,42 @@ export default function handler(req, res) {
     },400);
   };
 
-  window.providerHtml=function(type){
-    const arr=getProviders().filter(function(p){return p.type===type});
-    if(!arr.length)return '<div class="empty">No '+type+' provider configured.</div>';
-    return arr.map(function(p){
-      const id=String(p.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const esc=window.esc||function(v){return String(v==null?'':v)};
-      return '<div class="provider"><div class="providerHead"><b>'+esc(p.name)+'</b><span class="muted">'+(p.active?'ACTIVE':'')+'</span></div><div class="muted">Default model: '+esc(p.model)+' · '+esc(p.baseUrl)+'</div><div class="providerActions"><button class="btn" onclick="setActive(\\''+id+'\\')">Use This</button><button class="btn" onclick="editProvider(\\''+id+'\\')">Edit</button><button class="btn" onclick="removeProvider(\\''+id+'\\')">Remove</button></div></div>';
-    }).join('');
-  };
+  function addEditButtons(){
+    const containers=[
+      {el:document.getElementById('textProviders'),type:'text'},
+      {el:document.getElementById('imageProviders'),type:'image'}
+    ];
+    containers.forEach(function(group){
+      if(!group.el)return;
+      const providers=getProviders().filter(function(p){return p.type===group.type});
+      group.el.querySelectorAll('.provider').forEach(function(card,index){
+        if(card.querySelector('.editProviderBtn'))return;
+        const p=providers[index];
+        if(!p)return;
+        const actions=card.querySelector('div[style*="margin-top:10px"]');
+        if(!actions)return;
+        const btn=document.createElement('button');
+        btn.className='btn editProviderBtn';
+        btn.type='button';
+        btn.textContent='Edit';
+        btn.addEventListener('click',function(){window.editProvider(p.id)});
+        actions.appendChild(document.createTextNode(' '));
+        actions.appendChild(btn);
+      });
+    });
+  }
+
+  function observeProviders(){
+    const text=document.getElementById('textProviders');
+    const image=document.getElementById('imageProviders');
+    if(!text&&!image)return;
+    [text,image].filter(Boolean).forEach(function(el){
+      new MutationObserver(addEditButtons).observe(el,{childList:true,subtree:true});
+    });
+    addEditButtons();
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeProviders);else observeProviders();
 })();
 </script>`;
 
