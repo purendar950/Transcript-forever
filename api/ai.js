@@ -5,61 +5,61 @@ export default async function handler(req, res) {
   }
   try {
     const { baseUrl, apiKey, apiUser, action = 'models', model, messages, prompt, size = '1024x1024' } = req.body || {};
-    if (!baseUrl || !apiKey) return res.status(400).json({ error: 'baseUrl and apiKey are required' });
-    const url = new URL(baseUrl);
+    const cleanBaseUrl = String(baseUrl || '').trim();
+    const cleanApiKey = String(apiKey || '').trim();
+    if (!cleanBaseUrl || !cleanApiKey) return res.status(400).json({ error: 'baseUrl and apiKey are required' });
+
+    const url = new URL(cleanBaseUrl);
     if (url.protocol !== 'https:') return res.status(400).json({ error: 'HTTPS is required' });
     const host = url.hostname.toLowerCase();
     const blocked = /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|169\.254\.|::1$)/.test(host);
     if (blocked || host.endsWith('.local') || host.endsWith('.internal')) return res.status(400).json({ error: 'Private/local endpoints are not allowed.' });
 
+    if (action === 'image' && host === 'gen.pollinations.ai') {
+      if (!model) return res.status(400).json({ error: 'Image model is required.' });
+      const cleanPrompt = String(prompt || 'educational vocabulary illustration');
+      const nativeUrl = new URL('/image/' + encodeURIComponent(cleanPrompt), url.origin);
+      nativeUrl.searchParams.set('model', model);
+      const parts = String(size || '1024x1024').split('x').map(Number);
+      if (Number.isFinite(parts[0]) && parts[0] > 0) nativeUrl.searchParams.set('width', String(parts[0]));
+      if (Number.isFinite(parts[1]) && parts[1] > 0) nativeUrl.searchParams.set('height', String(parts[1]));
+
+      let upstream = await fetch(nativeUrl.toString(), {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${cleanApiKey}`, Accept: 'image/*' }
+      });
+
+      // Pollinations also supports the API key as ?key=. Retry that form if the
+      // bearer-header request is rejected, which helps with different key types.
+      if (!upstream.ok && (upstream.status === 401 || upstream.status === 403)) {
+        const retryUrl = new URL(nativeUrl.toString());
+        retryUrl.searchParams.set('key', cleanApiKey);
+        upstream = await fetch(retryUrl.toString(), { method: 'GET', headers: { Accept: 'image/*' } });
+      }
+
+      const contentType = upstream.headers.get('content-type') || '';
+      if (!upstream.ok) {
+        const errorText = await upstream.text();
+        return res.status(upstream.status).json({ error: errorText || `Pollinations image generation failed (${upstream.status})` });
+      }
+      if (!contentType.toLowerCase().startsWith('image/')) {
+        const errorText = await upstream.text();
+        return res.status(502).json({ error: errorText || `Pollinations returned ${contentType || 'non-image'} instead of an image.` });
+      }
+
+      const bytes = new Uint8Array(await upstream.arrayBuffer());
+      const b64 = Buffer.from(bytes).toString('base64');
+      return res.status(200).json({ data: [{ b64_json: b64, mime_type: contentType.split(';')[0] || 'image/png' }] });
+    }
+
     let target;
     let method = 'GET';
     let body;
-
     if (action === 'chat') {
       target = new URL('/v1/chat/completions', url).toString();
       method = 'POST';
       body = JSON.stringify({ model, messages: messages || [{ role: 'user', content: 'Reply with OK only.' }], max_tokens: 2400 });
     } else if (action === 'image') {
-      if (host === 'gen.pollinations.ai') {
-        const width = Number((size || '1024x1024').split('x')[0]) || 1024;
-        const height = Number((size || '1024x1024').split('x')[1]) || 1024;
-        const nativeUrl = new URL('/image/' + encodeURIComponent(prompt || 'educational vocabulary illustration'), url);
-        nativeUrl.searchParams.set('model', model || 'flux');
-        nativeUrl.searchParams.set('width', String(width));
-        nativeUrl.searchParams.set('height', String(height));
-        nativeUrl.searchParams.set('nologo', 'true');
-        nativeUrl.searchParams.set('key', apiKey);
-
-        let upstream = await fetch(nativeUrl.toString(), { method: 'GET' });
-        if (upstream.ok) {
-          const contentType = upstream.headers.get('content-type') || '';
-          if (contentType.startsWith('image/')) {
-            const b64 = Buffer.from(await upstream.arrayBuffer()).toString('base64');
-            return res.status(200).json({ data: [{ b64_json: b64 }] });
-          }
-        }
-
-        // Fallback to Pollinations' OpenAI-compatible image endpoint.
-        target = new URL('/v1/images/generations', url).toString();
-        method = 'POST';
-        body = JSON.stringify({ model: model || 'flux', prompt, size, n: 1 });
-        upstream = await fetch(target, {
-          method,
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body
-        });
-        const text = await upstream.text();
-        if (!upstream.ok) {
-          return res.status(upstream.status).json({ error: 'Pollinations image generation failed', detail: text.slice(0, 1500) });
-        }
-        try {
-          const json = JSON.parse(text);
-          if (json?.data?.[0]?.b64_json || json?.data?.[0]?.url) return res.status(200).json(json);
-        } catch {}
-        return res.status(502).json({ error: 'Pollinations returned an unexpected image response.', detail: text.slice(0, 1000) });
-      }
-
       target = new URL('/v1/images/generations', url).toString();
       method = 'POST';
       body = JSON.stringify({ model, prompt, size, n: 1 });
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       target = new URL('/v1/models', url).toString();
     }
 
-    const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+    const headers = { Authorization: `Bearer ${cleanApiKey}`, 'Content-Type': 'application/json' };
     if (apiUser) headers['X-API-User'] = apiUser;
     const upstream = await fetch(target, { method, headers, body });
     const text = await upstream.text();
