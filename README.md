@@ -1,161 +1,98 @@
-# 🎬 Transcript Forever
+# SSC Vocabulary AI
 
-Free YouTube Transcript API + Telegram Bot — runs 24/7 on Cloudflare Workers.
+AI-powered English vocabulary learning and revision app built specifically for SSC exam preparation.
 
-**No server. No credit card. Always on. $0 cost.**
+## Current Project
 
-## 🚀 Quick Deploy
+This repository contains the active **SSC Vocabulary AI** project. Old/unused transcript and Cloudflare Worker project files have been removed so the repository stays focused on this application.
 
-```bash
-# Clone the repo
-git clone https://github.com/purendar950/Transcript-forever.git
-cd Transcript-forever
+## Features
 
-# One-click setup
-bash setup.sh
+### Vocabulary Learning
+- SSC-focused vocabulary bank
+- Active Recall learning flow
+- Simple English meaning
+- Hindi meaning
+- Hinglish explanation
+- Pronunciation and part of speech
+- Synonyms and antonyms
+- SSC-style example sentences
+- Phonetic mnemonics
+- Visual memory stories
+- Core idea and confusion words
+
+### AI Settings
+- Multiple Text AI providers
+- Dedicated Image AI providers
+- Add multiple models to each provider
+- Edit existing providers
+- Use This / Remove provider controls
+- Provider-specific model selection
+- Model dropdowns show **only models saved by the user**
+- OpenAI-compatible API support
+- Connection testing
+
+### SSC Quiz
+- Four-option MCQs
+- Random option positions
+- Correct answer mapping remains accurate after randomization
+- All Words mode
+- Weak Words mode
+- Learned Words mode
+- Correct answer → Learned
+- Wrong answer → Weak
+- Review timing based on performance
+
+### Image Generation
+- Dedicated Image AI configuration
+- Supports image-generation providers such as Pollinations AI
+- Image generation is separate from Text AI because text models do not necessarily support image generation
+
+## Project Structure
+
+```text
+.
+├── index.html          # Main SSC Vocabulary AI application
+├── api/
+│   ├── ai.js           # AI provider proxy and image/text API handling
+│   └── home.js         # Application HTML delivery and UI compatibility layer
+├── vercel.json         # Vercel routing configuration
+├── README.md
+└── .gitignore
 ```
 
-That's it. The script handles everything:
-1. Installs dependencies
-2. Logs into Cloudflare
-3. Sets your bot token
-4. Deploys the worker
-5. Connects Telegram webhook
+## AI Provider Configuration
 
-## 📡 API Usage
+For a Text AI provider, configure:
 
-Your other projects can call these endpoints:
+- Provider name
+- Base URL
+- API key
+- Optional API user
+- One or more model IDs
 
-### GET Request
-```bash
-curl "YOUR_WORKER_URL/api/transcript?url=https://youtube.com/watch?v=dQw4w9WgXcQ&format=plain"
+For an Image AI provider, configure the same provider information plus the image model and size where supported.
+
+### Pollinations AI
+
+For Pollinations' OpenAI-compatible API, use:
+
+```text
+Base URL: https://gen.pollinations.ai/v1
 ```
 
-### POST Request
-```bash
-curl -X POST "YOUR_WORKER_URL/api/transcript" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://youtube.com/watch?v=dQw4w9WgXcQ", "format": "timestamps"}'
-```
+Add the image model you want to use to the provider's **Model** field. The app intentionally displays only the models you manually save in AI Settings rather than mixing them with a large remote model catalog.
 
-### Response
-```json
-{
-  "success": true,
-  "video_id": "dQw4w9WgXcQ",
-  "format": "plain",
-  "word_count": 152,
-  "segment_count": 38,
-  "transcript": "We're no strangers to love..."
-}
-```
+## Security
 
-### Available Formats
+- Do not commit API keys to the repository.
+- API keys entered in the application are handled through the app's provider configuration flow.
+- Use secret/server-side keys only where the provider requires them.
 
-| Format | Description |
-|--------|-------------|
-| `plain` | Clean readable text |
-| `timestamps` | Text with [MM:SS] markers |
-| `paragraphs` | Split by natural pauses |
-| `summary` | Condensed ~500 words |
-| `srt` | SRT subtitle file format |
+## Deployment
 
-### Endpoints
+The project is configured for Vercel deployment. The root route is served through the Vercel API entry point defined in `vercel.json`.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET/POST | `/api/transcript` | Get YouTube transcript |
-| GET | `/api/formats` | List available formats |
-| GET | `/api/health` | Health check |
-| POST | `/webhook` | Telegram webhook (auto) |
+## Development Principle
 
-## 💻 Use in Your Project
-
-### JavaScript / Node.js
-```javascript
-const res = await fetch('YOUR_WORKER_URL/api/transcript?url=https://youtube.com/watch?v=abc&format=plain');
-const data = await res.json();
-console.log(data.transcript);
-```
-
-### Python
-```python
-import requests
-
-r = requests.get('YOUR_WORKER_URL/api/transcript', params={
-    'url': 'https://youtube.com/watch?v=abc',
-    'format': 'plain'
-})
-print(r.json()['transcript'])
-```
-
-### cURL
-```bash
-curl "YOUR_WORKER_URL/api/transcript?url=https://youtube.com/watch?v=abc&format=plain"
-```
-
-## 📱 Telegram Bot
-
-1. Open Telegram → find your bot
-2. Send a YouTube URL
-3. Pick a format
-4. Get the transcript
-
-Commands:
-- `/start` — Welcome message
-- `/help` — How to use
-
-## 🔧 Manual Setup
-
-```bash
-# Install wrangler
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Set bot token
-echo "YOUR_BOT_TOKEN" | wrangler secret put BOT_TOKEN
-
-# Deploy
-wrangler deploy
-
-# Set Telegram webhook
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://YOUR-WORKER.workers.dev/webhook"
-```
-
-## 📁 Project Structure
-
-```
-Transcript-forever/
-├── worker.js        # Main worker (Telegram bot + API)
-├── wrangler.toml    # Cloudflare config
-├── package.json     # Dependencies
-├── setup.sh         # One-click setup script
-├── .gitignore
-└── README.md
-```
-
-## ⚡ Free Tier Limits
-
-| Limit | Value |
-|-------|-------|
-| Requests/day | 100,000 |
-| CPU time/request | 10ms |
-| Memory | 128MB |
-
-For personal use, you'll never hit these limits.
-
-## 🔄 Updating
-
-After making changes to `worker.js`:
-
-```bash
-wrangler deploy
-```
-
-## 📜 License
-
-MIT
-
-<!-- deployment trigger -->
+The existing working features should be preserved when adding new functionality. Future changes should be made as small, isolated fixes instead of replacing the entire application unnecessarily.
