@@ -1,5 +1,0 @@
-name = "transcript-forever"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-
-# BOT_TOKEN is set via: wrangler secret put BOT_TOKEN
