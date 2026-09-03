@@ -1,5 +1,5 @@
 {
-  "rewrites": [
-    { "source": "/", "destination": "/app.html" }
+  "routes": [
+    { "src": "/", "dest": "/api/home.js" }
   ]
 }
