@@ -7,12 +7,13 @@ export default function handler(req, res) {
     const injection = `
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.wordStatus{display:inline-flex;align-items:center;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:800;margin-left:6px}
+.wordStatus{display:inline-flex!important;align-items:center;padding:5px 11px;border-radius:14px;font-size:11px;font-weight:800;margin-left:8px;vertical-align:middle;visibility:visible!important;opacity:1!important}
 .wordStatus.learned{background:#e8f8ee;color:#14894a;border:1px solid #b8e1c4}
 .wordStatus.weak{background:#fff1f3;color:#d84662;border:1px solid #efb4c0}
 .wordStatus.unseen{background:#edf5ff;color:#3471cb;border:1px solid #bfd8f5}
 .deleteWordBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
 .deleteWordBtn:disabled{opacity:.55;cursor:not-allowed}
+.deleteAllWordsBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
 .wordItem{position:relative}
 .wordItem .wordStatus{margin:7px 0 0}
 </style>
@@ -24,55 +25,83 @@ export default function handler(req, res) {
   function save(){return app('save')()}
   function words(){return app('words')}
   function stateFor(word){return app('stateFor')(word)}
+  function progress(){return app('progress')}
   function esc(v){return String(v==null?'':v).replace(/[&<>\\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;'}[m]||m})}
   function splitModels(v){return String(v||'').split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
   function savedModels(p){return splitModels(p&&p.model)}
 
   function statusInfo(word){
-    var s=stateFor(word),status=s.status||'unseen';
+    var s=stateFor(word),status=s&&s.status?String(s.status):'unseen';
     if(status==='learned')return {label:'LEARNED',cls:'learned'};
     if(status==='weak')return {label:'WEAK',cls:'weak'};
     return {label:'NOT READY',cls:'unseen'};
   }
 
-  function updateCurrentStatus(){
-    var ws=words(),idx=app('idx'),d=ws[idx],el=document.getElementById('wordStatus');
-    if(!el||!d)return;
-    var info=statusInfo(d.word);el.textContent=info.label;el.className='wordStatus '+info.cls;
-    var del=document.getElementById('deleteCurrentWord');
-    if(del){
-      var builtIn=idx<app('seed').length;
-      del.style.display='inline-block';
-      del.disabled=builtIn;
-      del.title=builtIn?'Built-in SSC word cannot be deleted':'Delete this word';
-    }
+  function currentWord(){
+    var el=document.getElementById('word');
+    return el?String(el.textContent||'').trim():'';
   }
 
-  window.deleteCurrentWord=function(){
-    var ws=words(),idx=app('idx'),seed=app('seed'),d=ws[idx];
-    if(!d||idx<seed.length)return;
-    if(!window.confirm('Delete "'+d.word+'" from My Vocabulary?'))return;
-    ws.splice(idx,1);
-    app('idx = Math.min('+Math.max(0,idx)+', words.length - 1)');
-    save();
-    app('render')();
-    if(document.getElementById('vocab')?.classList.contains('active'))app('renderList')();
-    var t=document.getElementById('toast');if(t){t.textContent='Word deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
-  };
+  function updateCurrentStatus(){
+    var word=currentWord(),el=document.getElementById('wordStatus');
+    if(!word||!el)return;
+    var info=statusInfo(word);
+    el.textContent=info.label;
+    el.className='wordStatus '+info.cls;
+    el.style.display='inline-flex';
+  }
 
   function ensureWordControls(){
     var actions=document.querySelector('#flash .titlebar .actions');
     if(actions&&!document.getElementById('deleteCurrentWord')){
       var add=actions.querySelector('button[onclick*="openAdd"]');
-      var b=document.createElement('button');b.id='deleteCurrentWord';b.className='btn deleteWordBtn';b.type='button';b.textContent='Delete Word';b.onclick=window.deleteCurrentWord;
+      var b=document.createElement('button');
+      b.id='deleteCurrentWord';b.className='btn deleteWordBtn';b.type='button';b.textContent='Delete Word';b.onclick=window.deleteCurrentWord;
       if(add)actions.insertBefore(b,add);else actions.prepend(b);
     }
-    var tag=document.getElementById('pos');
-    if(tag&&!document.getElementById('wordStatus')){
-      var s=document.createElement('span');s.id='wordStatus';s.className='wordStatus unseen';s.textContent='NOT READY';tag.insertAdjacentElement('afterend',s);
+    var addButton=actions&&actions.querySelector('button[onclick*="openAdd"]');
+    if(actions&&!document.getElementById('deleteAllWords')){
+      var b2=document.createElement('button');
+      b2.id='deleteAllWords';b2.className='btn deleteAllWordsBtn';b2.type='button';b2.textContent='Delete All Words';b2.onclick=window.deleteAllWords;
+      if(addButton)actions.insertBefore(b2,addButton);else actions.appendChild(b2);
+    }
+    var wordEl=document.getElementById('word');
+    if(wordEl&&!document.getElementById('wordStatus')){
+      var s=document.createElement('span');
+      s.id='wordStatus';s.className='wordStatus unseen';s.textContent='NOT READY';
+      wordEl.insertAdjacentElement('afterend',s);
     }
     updateCurrentStatus();
   }
+
+  window.deleteCurrentWord=function(){
+    var ws=words(),idx=app('idx'),seed=app('seed'),d=ws[idx];
+    if(!d||idx<seed.length){alert('Built-in SSC words cannot be deleted.');return}
+    if(!window.confirm('Delete “'+d.word+'” from My Vocabulary?'))return;
+    ws.splice(idx,1);
+    if(idx>=ws.length)app('idx = Math.max(0, words.length - 1)');
+    save();
+    app('render')();
+    if(document.getElementById('vocab')?.classList.contains('active'))app('renderList')();
+    ensureWordControls();
+    var t=document.getElementById('toast');if(t){t.textContent='Word deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
+  };
+
+  window.deleteAllWords=function(){
+    var ws=words(),seed=app('seed');
+    var count=Math.max(0,ws.length-seed.length);
+    if(!count){alert('There are no user-added words to delete.');return}
+    if(!window.confirm('Delete all '+count+' user-added words? Built-in SSC words will remain.'))return;
+    ws.splice(seed.length);
+    var p=progress();
+    Object.keys(p).forEach(function(k){if(!seed.some(function(d){return d.word===k}))delete p[k]});
+    app('idx = Math.min(idx, words.length - 1)');
+    save();
+    app('render')();
+    app('renderList')();
+    ensureWordControls();
+    var t=document.getElementById('toast');if(t){t.textContent='All user-added words deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
+  };
 
   window.editProvider=function(id){
     var p=providers().find(function(x){return x.id===id}); if(!p)return;
@@ -170,30 +199,16 @@ export default function handler(req, res) {
   }
 
   var oldRender=window.renderProviders;
-  window.renderProviders=function(){
-    if(oldRender)oldRender();
-    setTimeout(ensureEditButtons,0);
-  };
+  window.renderProviders=function(){if(oldRender)oldRender();setTimeout(ensureEditButtons,0)};
   var oldRenderFlash=window.render;
-  window.render=function(){
-    if(oldRenderFlash)oldRenderFlash();
-    setTimeout(function(){ensureWordControls();ensureEditButtons()},0);
-  };
+  window.render=function(){if(oldRenderFlash)oldRenderFlash();setTimeout(function(){ensureWordControls();ensureEditButtons()},0)};
   var oldOpenAdd=window.openAdd;
-  window.openAdd=function(){
-    if(oldOpenAdd)oldOpenAdd();
-    patchProviderSelect('addProvider','text');
-    fillSaved('text',document.getElementById('addProvider').value,'addModel','addStatus');
-  };
+  window.openAdd=function(){if(oldOpenAdd)oldOpenAdd();patchProviderSelect('addProvider','text');fillSaved('text',document.getElementById('addProvider').value,'addModel','addStatus')};
   window.onAddProviderChange=function(){fillSaved('text',document.getElementById('addProvider').value,'addModel','addStatus')};
   window.refreshAddModels=function(){fillSaved('text',document.getElementById('addProvider').value,'addModel','addStatus')};
 
   var oldOpenImage=window.openImagePicker;
-  window.openImagePicker=function(){
-    if(oldOpenImage)oldOpenImage();
-    patchProviderSelect('imageProvider','image');
-    fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus');
-  };
+  window.openImagePicker=function(){if(oldOpenImage)oldOpenImage();patchProviderSelect('imageProvider','image');fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
   window.onImageProviderChange=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
   window.refreshImageModels=function(){fillSaved('image',document.getElementById('imageProvider').value,'imageModel','imagePickerStatus')};
 
@@ -206,14 +221,17 @@ export default function handler(req, res) {
         var d=ws[seed.length+i];if(!d)return;
         var info=statusInfo(d.word),badge=box.querySelector('.wordStatus');
         if(!badge){badge=document.createElement('span');box.appendChild(badge)}
-        badge.className='wordStatus '+info.cls;badge.textContent=info.label;
+        badge.className='wordStatus '+info.cls;badge.textContent=info.label;badge.style.display='inline-flex';
       });
+      ensureWordControls();
     },0);
   };
 
   function start(){
     ensureWordControls();
     ensureEditButtons();
+    var word=document.getElementById('word');
+    if(word)new MutationObserver(function(){ensureWordControls()}).observe(word,{childList:true,characterData:true,subtree:true});
     ['textProviders','imageProviders'].forEach(function(cid){
       var root=document.getElementById(cid);if(!root)return;
       new MutationObserver(function(){ensureEditButtons()}).observe(root,{childList:true,subtree:true});
