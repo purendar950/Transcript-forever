@@ -12,6 +12,7 @@ export default function handler(req, res) {
 .wordStatus.weak{background:#fff1f3;color:#d84662;border:1px solid #efb4c0}
 .wordStatus.unseen{background:#edf5ff;color:#3471cb;border:1px solid #bfd8f5}
 .deleteWordBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
+.deleteWordBtn:disabled{opacity:.55;cursor:not-allowed}
 .wordItem{position:relative}
 .wordItem .wordStatus{margin:7px 0 0}
 </style>
@@ -39,7 +40,12 @@ export default function handler(req, res) {
     if(!el||!d)return;
     var info=statusInfo(d.word);el.textContent=info.label;el.className='wordStatus '+info.cls;
     var del=document.getElementById('deleteCurrentWord');
-    if(del)del.style.display=idx>=app('seed').length?'inline-block':'none';
+    if(del){
+      var builtIn=idx<app('seed').length;
+      del.style.display='inline-block';
+      del.disabled=builtIn;
+      del.title=builtIn?'Built-in SSC word cannot be deleted':'Delete this word';
+    }
   }
 
   window.deleteCurrentWord=function(){
