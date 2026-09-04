@@ -1,14 +1,14 @@
 import flashHome from './flash-home.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   let captured = '';
   const fake = {
     setHeader() {},
     status(code) { this.code = code; return this; },
-    send(body) { captured = body; return this; }
+    send(body) { captured = String(body || ''); return this; }
   };
 
-  flashHome(req, fake);
+  await flashHome(req, fake);
   if (!captured) return res.status(500).send('Unable to load the vocabulary app.');
 
   const fix = `
