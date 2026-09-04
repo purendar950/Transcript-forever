@@ -12,6 +12,9 @@ export default async function handler(req, res) {
 
   const injection = `
 <style>
+/* Flashcards enhancement: only the currently selected sidebar item may stay purple. */
+.sidebar .nav button.active:not([data-sp-active="1"]){background:transparent!important;color:#e7eaf2!important}
+.sidebar .nav button[data-sp-active="1"]{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
 .realFlashViewport{perspective:1400px;min-height:620px}
 .realFlashCard{position:relative;width:100%;min-height:620px;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.2,.7,.2,1);cursor:pointer}
 .realFlashCard.isBack{transform:rotateY(180deg)}
@@ -55,7 +58,10 @@ export default async function handler(req, res) {
     var title=(document.querySelector('.titlebar h1')||{}).textContent||'';
     title=title.trim().toLowerCase();
     var buttons=Array.from(nav.querySelectorAll('button'));
-    buttons.forEach(function(b){b.classList.remove('active')});
+    buttons.forEach(function(b){
+      b.removeAttribute('data-sp-active');
+      b.classList.remove('active');
+    });
     var wanted=null;
     if(title.indexOf('flashcard')!==-1)wanted=buttons.find(function(b){return /Flashcards/i.test(b.textContent||'')});
     else if(title.indexOf('dashboard')!==-1)wanted=buttons.find(function(b){return /Dashboard/i.test(b.textContent||'')});
@@ -64,7 +70,7 @@ export default async function handler(req, res) {
     else if(title.indexOf('quiz')!==-1)wanted=buttons.find(function(b){return /AI Quiz/i.test(b.textContent||'')});
     else if(title.indexOf('progress')!==-1)wanted=buttons.find(function(b){return /View Progress/i.test(b.textContent||'')});
     else if(title.indexOf('settings')!==-1)wanted=buttons.find(function(b){return /AI Settings/i.test(b.textContent||'')});
-    if(wanted)wanted.classList.add('active');
+    if(wanted)wanted.setAttribute('data-sp-active','1');
   }
   function buildFlash(flash){
     var word=((flash.querySelector('.word')||{}).textContent||'Vocabulary').trim();
@@ -102,11 +108,11 @@ export default async function handler(req, res) {
     upgrade();
     var nav=document.querySelector('.sidebar .nav');
     if(nav){
-      nav.addEventListener('click',function(){setTimeout(syncSidebar,80);setTimeout(syncSidebar,300)});
-      new MutationObserver(function(){setTimeout(syncSidebar,30)}).observe(nav,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+      nav.addEventListener('click',function(){setTimeout(syncSidebar,20);setTimeout(syncSidebar,100);setTimeout(syncSidebar,300)});
+      new MutationObserver(function(){setTimeout(syncSidebar,20)}).observe(nav,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
     }
     new MutationObserver(function(){setTimeout(upgrade,50)}).observe(document.body,{childList:true,subtree:true});
-    setInterval(upgrade,1000);
+    setInterval(upgrade,500);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
