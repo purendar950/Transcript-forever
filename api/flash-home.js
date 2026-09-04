@@ -35,42 +35,80 @@ export default async function handler(req, res) {
 </style>
 <script>
 (function(){
-  function devanagari(ipa,word){
-    var s=String(ipa||'').replace(/^\\/+|\\/+$/g,'').toLowerCase();
+  function extractIPA(raw){
+    var text=String(raw||'').trim();
+    var slash=text.match(/\\/([^\\/]+)\\//);
+    if(slash)return slash[1].trim();
+    return text.replace(/^[^A-Za-zɡɑɔəɛɪʊʌæɜːˑˈˌ]+/,'').split(/[·|,]/)[0].trim();
+  }
+  function devanagari(raw,word){
+    var s=extractIPA(raw).toLowerCase().replace(/[ˈˌ]/g,'');
     if(!s)return word||'—';
-    var exact={'gaɪl':'गाइल','gaɪt':'गाइट','kæt':'कैट','həʊm':'होम','pleɪn':'प्लेन','flaʊə':'फ्लावर','brʌðər':'ब्रदर'};
+    var exact={'gaɪl':'गाइल','ɡaɪl':'गाइल','gaɪt':'गाइट','kæt':'कैट','həʊm':'होम','pleɪn':'प्लेन','flaʊə':'फ्लावर','brʌðər':'ब्रदर'};
     if(exact[s])return exact[s];
-    var r=s.replace(/dʒ/g,'ज').replace(/tʃ/g,'च').replace(/aɪ/g,'आइ').replace(/eɪ/g,'ए').replace(/əʊ/g,'ओ').replace(/aʊ/g,'आउ').replace(/ɔɪ/g,'ऑइ').replace(/ʃ/g,'श').replace(/ʒ/g,'झ').replace(/θ/g,'थ').replace(/ð/g,'द').replace(/ŋ/g,'ङ').replace(/ɪ/g,'ि').replace(/iː/g,'ई').replace(/i/g,'इ').replace(/uː/g,'ऊ').replace(/u/g,'उ').replace(/ɑː/g,'आ').replace(/ɑ/g,'आ').replace(/ɔː/g,'ऑ').replace(/ɔ/g,'ऑ').replace(/æ/g,'ऐ').replace(/ʌ/g,'अ').replace(/ɜː/g,'अर').replace(/ə/g,'अ').replace(/ɛ/g,'ए').replace(/e/g,'ए').replace(/oʊ/g,'ओ').replace(/p/g,'प').replace(/b/g,'ब').replace(/t/g,'ट').replace(/d/g,'ड').replace(/k/g,'क').replace(/g/g,'ग').replace(/f/g,'फ').replace(/v/g,'व').replace(/s/g,'स').replace(/z/g,'ज़').replace(/h/g,'ह').replace(/m/g,'म').replace(/n/g,'न').replace(/l/g,'ल').replace(/r/g,'र').replace(/w/g,'व').replace(/j/g,'य').replace(/ /g,'');
+    var r=s.replace(/dʒ/g,'ज').replace(/tʃ/g,'च').replace(/aɪ/g,'आइ').replace(/eɪ/g,'ए').replace(/əʊ/g,'ओ').replace(/aʊ/g,'आउ').replace(/ɔɪ/g,'ऑइ').replace(/ʃ/g,'श').replace(/ʒ/g,'झ').replace(/θ/g,'थ').replace(/ð/g,'द').replace(/ŋ/g,'ङ').replace(/ɡ/g,'ग').replace(/ɪ/g,'ि').replace(/iː/g,'ई').replace(/i/g,'इ').replace(/uː/g,'ऊ').replace(/u/g,'उ').replace(/ɑː/g,'आ').replace(/ɑ/g,'आ').replace(/ɔː/g,'ऑ').replace(/ɔ/g,'ऑ').replace(/æ/g,'ऐ').replace(/ʌ/g,'अ').replace(/ɜː/g,'अर').replace(/ə/g,'अ').replace(/ɛ/g,'ए').replace(/e/g,'ए').replace(/oʊ/g,'ओ').replace(/p/g,'प').replace(/b/g,'ब').replace(/t/g,'ट').replace(/d/g,'ड').replace(/k/g,'क').replace(/g/g,'ग').replace(/f/g,'फ').replace(/v/g,'व').replace(/s/g,'स').replace(/z/g,'ज़').replace(/h/g,'ह').replace(/m/g,'म').replace(/n/g,'न').replace(/l/g,'ल').replace(/r/g,'र').replace(/w/g,'व').replace(/j/g,'य').replace(/ /g,'');
     return r||word||'—';
   }
-  function upgrade(){
-    var flash=document.querySelector('.flash');
-    if(!flash||flash.dataset.realFlash)return;
-    var word=(flash.querySelector('.word')||{}).textContent||'Vocabulary';
-    var ipa=(flash.querySelector('.pronline')||{}).textContent||'';
+  function syncSidebar(){
+    var nav=document.querySelector('.sidebar .nav');
+    if(!nav)return;
+    var title=(document.querySelector('.titlebar h1')||{}).textContent||'';
+    title=title.trim().toLowerCase();
+    var buttons=Array.from(nav.querySelectorAll('button'));
+    buttons.forEach(function(b){b.classList.remove('active')});
+    var wanted=null;
+    if(title.indexOf('flashcard')!==-1)wanted=buttons.find(function(b){return /Flashcards/i.test(b.textContent||'')});
+    else if(title.indexOf('dashboard')!==-1)wanted=buttons.find(function(b){return /Dashboard/i.test(b.textContent||'')});
+    else if(title.indexOf('vocabulary')!==-1)wanted=buttons.find(function(b){return /My Vocabulary/i.test(b.textContent||'')});
+    else if(title.indexOf('practice')!==-1)wanted=buttons.find(function(b){return /^\\s*[^A-Za-z]*Practice\\s*$/i.test(b.textContent||'')});
+    else if(title.indexOf('quiz')!==-1)wanted=buttons.find(function(b){return /AI Quiz/i.test(b.textContent||'')});
+    else if(title.indexOf('progress')!==-1)wanted=buttons.find(function(b){return /View Progress/i.test(b.textContent||'')});
+    else if(title.indexOf('settings')!==-1)wanted=buttons.find(function(b){return /AI Settings/i.test(b.textContent||'')});
+    if(wanted)wanted.classList.add('active');
+  }
+  function buildFlash(flash){
+    var word=((flash.querySelector('.word')||{}).textContent||'Vocabulary').trim();
+    var ipa=((flash.querySelector('.pronline')||{}).textContent||'').trim();
     var posEl=flash.querySelector('.tag');
     var pos=posEl?posEl.textContent.trim():'';
     var original=flash.innerHTML;
-    flash.dataset.realFlash='1';
+    flash.dataset.realFlashWord=word;
     flash.classList.add('realFlashViewport');
     flash.innerHTML='';
     var card=document.createElement('div');card.className='realFlashCard';
     var front=document.createElement('div');front.className='realFlashFace realFlashFront';
     front.innerHTML='<div class="rfLabel">Active Recall · Front</div><div class="rfWord"></div><div class="rfPron"></div><div class="rfPos"></div><div class="rfHint">Tap the card to reveal meaning, synonyms, antonyms & memory trick</div>';
-    front.querySelector('.rfWord').textContent=word.trim();
-    front.querySelector('.rfPron').textContent=devanagari(ipa,word.trim());
+    front.querySelector('.rfWord').textContent=word;
+    front.querySelector('.rfPron').textContent=devanagari(ipa,word);
     front.querySelector('.rfPos').textContent=pos||'Vocabulary';
     var back=document.createElement('div');back.className='realFlashFace realFlashBack';
-    back.innerHTML='<div class="flashBackTitle"><b>'+word.trim().replace(/[&<>]/g,'')+'</b><span>Back · Learning Card</span></div><div class="oldFlashContent"></div><div class="sscRelevance">SSC Relevance: High-yield vocabulary practice · Check the question/date shown in the card before treating it as a verified PYQ.</div><button type="button" class="rfFlipBtn">↩ Tap to flip back</button>';
+    back.innerHTML='<div class="flashBackTitle"><b>'+word.replace(/[&<>]/g,'')+'</b><span>Back · Learning Card</span></div><div class="oldFlashContent"></div><div class="sscRelevance">SSC Relevance: High-yield vocabulary practice · Check the question/date shown in the card before treating it as a verified PYQ.</div><button type="button" class="rfFlipBtn">↩ Tap to flip back</button>';
     back.querySelector('.oldFlashContent').innerHTML=original;
     card.append(front,back);flash.appendChild(card);
-    card.addEventListener('click',function(e){if(e.target.closest('.rfFlipBtn')){card.classList.remove('isBack');return}if(e.target.closest('.realFlashBack'))return;card.classList.toggle('isBack')});
+    card.addEventListener('click',function(e){if(e.target.closest('.rfFlipBtn'))return;if(e.target.closest('.realFlashBack'))return;card.classList.toggle('isBack')});
     back.querySelector('.rfFlipBtn').addEventListener('click',function(e){e.stopPropagation();card.classList.remove('isBack')});
   }
-  function watch(){upgrade();}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
-  new MutationObserver(function(){setTimeout(upgrade,50)}).observe(document.body,{childList:true,subtree:true});
-  setInterval(upgrade,1200);
+  function upgrade(){
+    syncSidebar();
+    var flash=document.querySelector('.flash');
+    if(!flash)return;
+    var currentWord=((flash.querySelector('.word')||{}).textContent||'').trim();
+    if(!currentWord)return;
+    if(flash.querySelector('.realFlashCard'))return;
+    if(flash.dataset.realFlashWord===currentWord)return;
+    buildFlash(flash);
+  }
+  function start(){
+    upgrade();
+    var nav=document.querySelector('.sidebar .nav');
+    if(nav){
+      nav.addEventListener('click',function(){setTimeout(syncSidebar,80);setTimeout(syncSidebar,300)});
+      new MutationObserver(function(){setTimeout(syncSidebar,30)}).observe(nav,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+    }
+    new MutationObserver(function(){setTimeout(upgrade,50)}).observe(document.body,{childList:true,subtree:true});
+    setInterval(upgrade,1000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>`;
   page = page.replace('</body>', injection + '</body>');
