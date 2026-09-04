@@ -8,22 +8,23 @@ export default function handler(req, res) {
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
+.sidebar{display:flex;flex-direction:column}
 .sidebarProgressBtn{display:block!important;width:100%;margin-top:5px!important;background:transparent!important;color:#e7eaf2!important;border:0!important;border-radius:8px!important;text-align:left!important;padding:12px 13px!important;font-weight:600!important;cursor:pointer!important}
 .sidebarProgressBtn:hover,.sidebarProgressBtn.active{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
-.goal .outline{display:none!important}
-/* Keep Daily Goal compact and directly above the user profile */
-.sidebar{display:flex;flex-direction:column}
-.sidebar .nav{order:2}
-.sidebar .goal{position:static;order:3;flex:0 0 auto;margin:8px 0 8px;padding:9px 10px;border-radius:10px}
-.sidebar .goal h4{margin:0 0 5px;font-size:11px}
-.sidebar .goalrow{gap:7px;align-items:center}
-.sidebar .goalrow .ring{width:40px;height:40px;flex:0 0 40px}
-.sidebar .goalrow .ring:after{inset:5px}
-.sidebar .goalrow .ring b{font-size:10px}
-.sidebar .goalrow>div:last-child b{font-size:11px}
-.sidebar .goalrow>div:last-child small{font-size:9px}
-.sidebar .authPanel{order:4}
-@media(max-width:1000px){.sidebar .goal{display:none}}
+.sidebar .goal{position:static!important;left:auto!important;right:auto!important;bottom:auto!important;margin:10px 0 8px!important;padding:9px 10px!important;border-radius:11px!important;flex-shrink:0}
+.sidebar .goal h4{text-align:left!important;margin:0 0 6px!important;font-size:12px!important}
+.sidebar .goalrow{gap:8px!important}
+.sidebar .goal .ring{width:42px!important;height:42px!important;flex:0 0 42px!important}
+.sidebar .goal .ring:after{inset:4px!important}
+.sidebar .goal .outline{display:none!important}
+.sidebar .goal .goalrow>div:last-child{font-size:11px!important;line-height:1.3!important}
+.sidebar .goal .goalrow>div:last-child b{font-size:12px!important}
+.sidebar .authPanel{margin-top:auto}
+@media(max-width:1000px){
+  .sidebar{display:block!important}
+  .sidebar .goal{display:block!important;position:static!important;margin:10px 0 8px!important}
+  .sidebar .authPanel{margin-top:0!important}
+}
 </style>
 <script>
 (function(){
@@ -40,6 +41,8 @@ export default function handler(req, res) {
       var settings=Array.from(nav.querySelectorAll('button')).find(function(x){return /AI Settings/.test(x.textContent||'')});
       if(settings)nav.insertBefore(b,settings);else nav.appendChild(b);
     }
+    var goal=document.querySelector('.sidebar .goal'),auth=document.querySelector('.sidebar .authPanel');
+    if(goal&&auth&&goal.nextElementSibling!==auth)auth.parentNode.insertBefore(goal,auth);
     var goalBtn=document.querySelector('.goal .outline');if(goalBtn)goalBtn.remove();
   }
   function scan(){
