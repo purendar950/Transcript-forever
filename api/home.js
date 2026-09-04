@@ -7,89 +7,74 @@ export default function handler(req, res) {
     const injection = `
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.wordStatus{display:inline-flex!important;align-items:center;padding:5px 11px;border-radius:14px;font-size:11px;font-weight:800;margin-left:8px;vertical-align:middle;visibility:visible!important;opacity:1!important}
-.wordStatus.learned{background:#e8f8ee;color:#14894a;border:1px solid #b8e1c4}
-.wordStatus.weak{background:#fff1f3;color:#d84662;border:1px solid #efb4c0}
-.wordStatus.unseen{background:#edf5ff;color:#3471cb;border:1px solid #bfd8f5}
-.deleteWordBtn{border-color:#e6859a!important;color:#d84662!important;background:#fff!important}
-.wordItem{position:relative}.wordItem .wordStatus{margin:7px 0 0}
+.providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
 </style>
 <script>
 (function(){
-  function app(name){return window.eval(name)}
-  function providers(){return app('providers')}
-  function active(type){return app('active')(type)}
-  function save(){return app('save')()}
-  function words(){return app('words')}
-  function stateFor(word){return app('stateFor')(word)}
+  function models(v){return String(v||'').split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
   function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m})}
-  function splitModels(v){return String(v||'').split(/[\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
-  function savedModels(p){return splitModels(p&&p.model)}
-  function currentWord(){var e=document.getElementById('word');return e?String(e.textContent||'').trim():''}
-  function statusInfo(word){var s=stateFor(word),st=s&&s.status?String(s.status):'unseen';if(st==='learned')return{label:'LEARNED',cls:'learned'};if(st==='weak')return{label:'WEAK',cls:'weak'};return{label:'NOT READY',cls:'unseen'}}
-  function updateCurrentStatus(){var w=currentWord(),e=document.getElementById('wordStatus');if(!w||!e)return;var i=statusInfo(w);e.textContent=i.label;e.className='wordStatus '+i.cls;e.style.display='inline-flex'}
-
-  function ensureWordControls(){
-    var actions=document.querySelector('#flash .titlebar .actions');
-    if(actions&&!document.getElementById('deleteCurrentWord')){var add=actions.querySelector('button[onclick*=\"openAdd\"]');var b=document.createElement('button');b.id='deleteCurrentWord';b.className='btn deleteWordBtn';b.type='button';b.textContent='Delete Word';b.onclick=window.deleteCurrentWord;if(add)actions.insertBefore(b,add);else actions.prepend(b)}
-    var oldAll=document.getElementById('deleteAllWords');if(oldAll)oldAll.remove();
-    var wordEl=document.getElementById('word');if(wordEl&&!document.getElementById('wordStatus')){var s=document.createElement('span');s.id='wordStatus';s.className='wordStatus unseen';s.textContent='NOT READY';wordEl.insertAdjacentElement('afterend',s)}
-    updateCurrentStatus()
+  function getProviders(){try{return JSON.parse(localStorage.getItem('sscAIProviders')||'[]')}catch(e){return[]}}
+  function putProviders(p){localStorage.setItem('sscAIProviders',JSON.stringify(p))}
+  function getId(box){var b=box.querySelector('button[onclick*=\"setActive\"]');var m=b&&b.getAttribute('onclick').match(/setActive\\(['\"]([^'\"]+)/);return m?m[1]:null}
+  function scan(){
+    ['textProviders','imageProviders'].forEach(function(cid){
+      var root=document.getElementById(cid);if(!root)return;
+      root.querySelectorAll('.provider').forEach(function(box){
+        if(box.querySelector('.editProviderBtn'))return;
+        var id=getId(box);if(!id)return;
+        var actions=box.querySelector('div[style*=\"margin-top\"]');if(!actions)return;
+        actions.classList.add('providerActions');
+        var b=document.createElement('button');b.type='button';b.className='btn editProviderBtn';b.textContent='Edit';
+        b.onclick=function(){openEdit(id)};actions.appendChild(b);
+      });
+    });
   }
-
-  window.deleteCurrentWord=function(){
-    var ws=words(),seed=app('seed'),word=currentWord();
-    var i=ws.findIndex(function(d){return d&&String(d.word||'').trim()===word});
-    if(i<0){alert('This word is not found in your vocabulary.');return}
-    if(i<seed.length){alert('Built-in SSC words cannot be deleted.');return}
-    var d=ws[i];if(!window.confirm('Delete “'+d.word+'” from My Vocabulary?'))return;
-    ws.splice(i,1);
-    try{app('idx = Math.max(0, Math.min('+i+', words.length - 1))')}catch(e){}
-    save();app('render')();app('renderList')();ensureWordControls();
-    var t=document.getElementById('toast');if(t){t.textContent='Word deleted';t.style.display='block';setTimeout(function(){t.style.display='none'},1800)}
-  };
-
-  window.editProvider=function(id){
-    var p=providers().find(function(x){return x.id===id});if(!p)return;
+  function resetModal(){
+    var save=document.querySelector('#providerModal .modalActions .primary');
+    if(save)save.onclick=null;
+    var h=document.querySelector('#providerModal .box h2');if(h)h.textContent='Add AI Provider';
+    if(save)save.textContent='Save Provider';
+    window._editingProviderId=null;
+  }
+  function openEdit(id){
+    var p=getProviders().find(function(x){return x.id===id});if(!p)return;
     window._editingProviderId=id;
-    document.getElementById('pName').value=p.name||'';document.getElementById('pType').value=p.type||'text';document.getElementById('pBase').value=p.baseUrl||'';document.getElementById('pModel').value=savedModels(p).join(', ');document.getElementById('pUser').value=p.apiUser||'';document.getElementById('pKey').value='';document.getElementById('pKey').placeholder=p.apiKey?'Leave blank to keep current API key':'API key';document.getElementById('pSize').value=p.size||'1024x1024';
-    document.querySelector('#providerModal .box h2').textContent='Edit AI Provider';document.querySelector('#providerModal .modalActions .primary').textContent='Save Changes';app('toggleImageFields')();document.getElementById('providerStatus').textContent='Editing '+(p.name||'provider');document.getElementById('providerModal').classList.add('show')
+    var set=function(id,v){var e=document.getElementById(id);if(e)e.value=v==null?'':v};
+    set('pName',p.name);set('pType',p.type||'text');set('pBase',p.baseUrl);set('pModel',models(p.model).join(', '));set('pUser',p.apiUser);set('pKey','');set('pSize',p.size||'1024x1024');
+    var h=document.querySelector('#providerModal .box h2');if(h)h.textContent='Edit AI Provider';
+    var save=document.querySelector('#providerModal .modalActions .primary');
+    if(save){save.textContent='Save Changes';save.onclick=function(){window._saveEditedProvider()};}
+    if(typeof window.toggleImageFields==='function')window.toggleImageFields();
+    var st=document.getElementById('providerStatus');if(st)st.textContent='Editing '+(p.name||'provider');
+    var modal=document.getElementById('providerModal');if(modal)modal.classList.add('show');
+  }
+  window._saveEditedProvider=function(){
+    var id=window._editingProviderId;if(!id)return;
+    var ps=getProviders(),p=ps.find(function(x){return x.id===id});if(!p)return;
+    var val=function(id){var e=document.getElementById(id);return e?e.value.trim():''};
+    var name=val('pName'),type=document.getElementById('pType').value,base=val('pBase'),model=val('pModel'),user=val('pUser'),key=val('pKey'),size=document.getElementById('pSize').value;
+    var st=document.getElementById('providerStatus');
+    if(!name||!base||!model){if(st)st.textContent='Name, Base URL and at least one Model are required.';return}
+    var oldType=p.type||'text';p.name=name;p.type=type;p.baseUrl=base.replace(/\\/$/,'');p.model=models(model).join(', ');p.apiUser=user;p.size=size;if(key)p.apiKey=key;
+    if(oldType!==type){var same=ps.filter(function(x){return x!==p&&(x.type||'text')===type});p.active=same.length===0;if(p.active)same.forEach(function(x){x.active=false})}
+    putProviders(ps);
+    if(st)st.textContent='Provider updated successfully.';
+    var modal=document.getElementById('providerModal');
+    setTimeout(function(){if(modal)modal.classList.remove('show');resetModal();location.reload()},250);
   };
-
-  var originalSave=window.saveProvider,originalClose=window.closeProvider;
-  window.saveProvider=function(){
-    var id=window._editingProviderId;if(!id)return originalSave();var p=providers().find(function(x){return x.id===id}),status=document.getElementById('providerStatus');if(!p){status.textContent='Provider no longer exists.';return}
-    var name=document.getElementById('pName').value.trim(),type=document.getElementById('pType').value,base=document.getElementById('pBase').value.trim(),models=splitModels(document.getElementById('pModel').value),user=document.getElementById('pUser').value.trim(),key=document.getElementById('pKey').value.trim(),size=document.getElementById('pSize').value;
-    if(!name||!base||!models.length){status.textContent='Name, Base URL and at least one Model are required.';return}
-    var oldType=p.type;p.name=name;p.type=type;p.baseUrl=base;p.model=models.join(', ');p.apiUser=user;p.size=size;if(key)p.apiKey=key;
-    if(oldType!==type){var same=providers().filter(function(x){return x!==p&&x.type===type});p.active=same.length===0;if(p.active)same.forEach(function(x){x.active=false})}
-    save();renderProviders();status.textContent='Provider updated successfully.';setTimeout(function(){document.getElementById('providerModal').classList.remove('show');window._editingProviderId=null;document.querySelector('#providerModal .box h2').textContent='Add AI Provider';document.querySelector('#providerModal .modalActions .primary').textContent='Save Provider'},300)
-  };
-  window.closeProvider=function(){if(originalClose)originalClose();window._editingProviderId=null;var h=document.querySelector('#providerModal .box h2'),b=document.querySelector('#providerModal .modalActions .primary');if(h)h.textContent='Add AI Provider';if(b)b.textContent='Save Provider'};
-
-  function addEditButton(box,p){if(!box||!p||box.querySelector('[data-edit-provider]'))return;var actions=box.querySelector('.providerActions')||box.querySelector('div[style*=\"margin-top\"]');if(!actions)return;actions.classList.add('providerActions');var b=document.createElement('button');b.className='btn';b.type='button';b.textContent='Edit';b.setAttribute('data-edit-provider','1');b.onclick=function(){window.editProvider(p.id)};actions.appendChild(b)}
-  function ensureEditButtons(){['textProviders','imageProviders'].forEach(function(cid){var root=document.getElementById(cid);if(!root)return;root.querySelectorAll('.provider').forEach(function(box){var nameEl=box.querySelector('.providerHead b');if(!nameEl)return;var p=providers().find(function(x){return x.name===nameEl.textContent.trim()});if(p)addEditButton(box,p)})})}
-
-  function fillSaved(type,providerId,selectId,statusId){var p=providers().find(function(x){return x.id===providerId})||active(type),sel=document.getElementById(selectId),st=statusId?document.getElementById(statusId):null;if(!sel)return;if(!p){sel.innerHTML='<option value=\"\">No provider</option>';return}var models=savedModels(p);sel.innerHTML=models.length?models.map(function(m){return '<option value=\"'+esc(m)+'\">'+esc(m)+'</option>'}).join(''):'<option value=\"\">No saved model</option>';if(st)st.textContent=models.length?models.length+' saved model'+(models.length===1?'':'s')+' available.':'No saved model. Add models in AI Settings.'}
-  window.fillModels=fillSaved;window.listModels=async function(){return[]};
-  function patchProviderSelect(id,type){var el=document.getElementById(id);if(!el)return;var old=el.value,ps=providers().filter(function(p){return p.type===type});el.innerHTML=ps.length?ps.map(function(p){return '<option value=\"'+esc(p.id)+'\">'+esc(p.name)+' — '+savedModels(p).length+' saved model'+(savedModels(p).length===1?'':'s')+'</option>'}).join(''):'<option value=\"\">No '+type+' provider configured</option>';if(ps.some(function(p){return p.id===old}))el.value=old}
-
-  var oldRenderProviders=window.renderProviders;window.renderProviders=function(){if(oldRenderProviders)oldRenderProviders();setTimeout(ensureEditButtons,0)};
-  var oldRender=window.render;window.render=function(){if(oldRender)oldRender();setTimeout(ensureWordControls,0)};
-  var oldOpenAdd=window.openAdd;window.openAdd=function(){if(oldOpenAdd)oldOpenAdd();patchProviderSelect('addProvider','text');var e=document.getElementById('addProvider');if(e)fillSaved('text',e.value,'addModel','addStatus')};
-  window.onAddProviderChange=function(){var e=document.getElementById('addProvider');if(e)fillSaved('text',e.value,'addModel','addStatus')};window.refreshAddModels=function(){var e=document.getElementById('addProvider');if(e)fillSaved('text',e.value,'addModel','addStatus')};
-  var oldOpenImage=window.openImagePicker;window.openImagePicker=function(){if(oldOpenImage)oldOpenImage();patchProviderSelect('imageProvider','image');var e=document.getElementById('imageProvider');if(e)fillSaved('image',e.value,'imageModel','imagePickerStatus')};
-  window.onImageProviderChange=function(){var e=document.getElementById('imageProvider');if(e)fillSaved('image',e.value,'imageModel','imagePickerStatus')};window.refreshImageModels=function(){var e=document.getElementById('imageProvider');if(e)fillSaved('image',e.value,'imageModel','imagePickerStatus')};
-  var oldRenderList=window.renderList;window.renderList=function(){if(oldRenderList)oldRenderList();setTimeout(function(){var ws=words(),seed=app('seed');document.querySelectorAll('#wordList .wordItem').forEach(function(box,i){var d=ws[seed.length+i];if(!d)return;var info=statusInfo(d.word),badge=box.querySelector('.wordStatus');if(!badge){badge=document.createElement('span');box.appendChild(badge)}badge.className='wordStatus '+info.cls;badge.textContent=info.label;badge.style.display='inline-flex'});ensureWordControls()},0)};
-  function start(){ensureWordControls();ensureEditButtons();var w=document.getElementById('word');if(w)new MutationObserver(ensureWordControls).observe(w,{childList:true,characterData:true,subtree:true});['textProviders','imageProviders'].forEach(function(cid){var root=document.getElementById(cid);if(root)new MutationObserver(ensureEditButtons).observe(root,{childList:true,subtree:true})})}
+  function start(){
+    scan();
+    ['textProviders','imageProviders'].forEach(function(cid){var root=document.getElementById(cid);if(root)new MutationObserver(scan).observe(root,{childList:true,subtree:true})});
+    setInterval(scan,1000);
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>`;
-    html=html.replace('</body>', injection+'</body>');
-    res.setHeader('Content-Type','text/html; charset=utf-8');
-    res.setHeader('Cache-Control','no-store');
+    html = html.replace('</body>', injection + '</body>');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(html);
   } catch(error) {
-    return res.status(500).send('Unable to load the vocabulary app. '+error.message);
+    return res.status(500).send('Unable to load the vocabulary app. ' + error.message);
   }
 }
