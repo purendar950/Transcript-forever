@@ -11,7 +11,8 @@ export default function handler(req, res) {
 .sidebar{display:flex;flex-direction:column}
 .sidebarProgressBtn{display:block!important;width:100%;margin-top:5px!important;background:transparent!important;color:#e7eaf2!important;border:0!important;border-radius:8px!important;text-align:left!important;padding:12px 13px!important;font-weight:600!important;cursor:pointer!important}
 .sidebarProgressBtn:hover,.sidebarProgressBtn.active{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
-.sidebar .goal{position:static!important;left:auto!important;right:auto!important;bottom:auto!important;margin:10px 0 8px!important;padding:9px 10px!important;border-radius:11px!important;flex-shrink:0}
+/* Always show the compact goal in the sidebar. The original mobile rule hid it. */
+.sidebar .goal{display:block!important;position:static!important;left:auto!important;right:auto!important;bottom:auto!important;margin:10px 0 8px!important;padding:9px 10px!important;border-radius:11px!important;flex-shrink:0!important;order:0}
 .sidebar .goal h4{text-align:left!important;margin:0 0 6px!important;font-size:12px!important}
 .sidebar .goalrow{gap:8px!important}
 .sidebar .goal .ring{width:42px!important;height:42px!important;flex:0 0 42px!important}
@@ -19,7 +20,7 @@ export default function handler(req, res) {
 .sidebar .goal .outline{display:none!important}
 .sidebar .goal .goalrow>div:last-child{font-size:11px!important;line-height:1.3!important}
 .sidebar .goal .goalrow>div:last-child b{font-size:12px!important}
-.sidebar .authPanel{margin-top:auto}
+.sidebar .authPanel{margin-top:auto!important;order:1}
 @media(max-width:1000px){
   .sidebar{display:block!important}
   .sidebar .goal{display:block!important;position:static!important;margin:10px 0 8px!important}
