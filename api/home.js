@@ -11,6 +11,19 @@ export default function handler(req, res) {
 .sidebarProgressBtn{display:block!important;width:100%;margin-top:5px!important;background:transparent!important;color:#e7eaf2!important;border:0!important;border-radius:8px!important;text-align:left!important;padding:12px 13px!important;font-weight:600!important;cursor:pointer!important}
 .sidebarProgressBtn:hover,.sidebarProgressBtn.active{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
 .goal .outline{display:none!important}
+/* Keep Daily Goal compact and directly above the user profile */
+.sidebar{display:flex;flex-direction:column}
+.sidebar .nav{order:2}
+.sidebar .goal{position:static;order:3;flex:0 0 auto;margin:8px 0 8px;padding:9px 10px;border-radius:10px}
+.sidebar .goal h4{margin:0 0 5px;font-size:11px}
+.sidebar .goalrow{gap:7px;align-items:center}
+.sidebar .goalrow .ring{width:40px;height:40px;flex:0 0 40px}
+.sidebar .goalrow .ring:after{inset:5px}
+.sidebar .goalrow .ring b{font-size:10px}
+.sidebar .goalrow>div:last-child b{font-size:11px}
+.sidebar .goalrow>div:last-child small{font-size:9px}
+.sidebar .authPanel{order:4}
+@media(max-width:1000px){.sidebar .goal{display:none}}
 </style>
 <script>
 (function(){
