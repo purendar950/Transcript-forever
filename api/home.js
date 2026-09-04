@@ -8,15 +8,29 @@ export default function handler(req, res) {
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
+.sidebarProgressBtn{display:block!important;width:100%;margin-top:5px!important;background:transparent!important;color:#e7eaf2!important;border:0!important;border-radius:8px!important;text-align:left!important;padding:12px 13px!important;font-weight:600!important;cursor:pointer!important}
+.sidebarProgressBtn:hover,.sidebarProgressBtn.active{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
+.goal .outline{display:none!important}
 </style>
 <script>
 (function(){
   function models(v){return String(v||'').split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean)}
-  function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]||m})}
   function getProviders(){try{return JSON.parse(localStorage.getItem('sscAIProviders')||'[]')}catch(e){return[]}}
   function putProviders(p){localStorage.setItem('sscAIProviders',JSON.stringify(p))}
   function getId(box){var b=box.querySelector('button[onclick*=\"setActive\"]');var m=b&&b.getAttribute('onclick').match(/setActive\\(['\"]([^'\"]+)/);return m?m[1]:null}
+  function ensureProgressNav(){
+    var nav=document.querySelector('.sidebar .nav');if(!nav)return;
+    var b=nav.querySelector('[data-progress-nav]');
+    if(!b){
+      b=document.createElement('button');b.type='button';b.setAttribute('data-progress-nav','1');b.className='sidebarProgressBtn';b.textContent='◔ View Progress';
+      b.onclick=function(){if(typeof window.go==='function')window.go('progress',b);};
+      var settings=Array.from(nav.querySelectorAll('button')).find(function(x){return /AI Settings/.test(x.textContent||'')});
+      if(settings)nav.insertBefore(b,settings);else nav.appendChild(b);
+    }
+    var goalBtn=document.querySelector('.goal .outline');if(goalBtn)goalBtn.remove();
+  }
   function scan(){
+    ensureProgressNav();
     ['textProviders','imageProviders'].forEach(function(cid){
       var root=document.getElementById(cid);if(!root)return;
       root.querySelectorAll('.provider').forEach(function(box){
@@ -65,6 +79,7 @@ export default function handler(req, res) {
   function start(){
     scan();
     ['textProviders','imageProviders'].forEach(function(cid){var root=document.getElementById(cid);if(root)new MutationObserver(scan).observe(root,{childList:true,subtree:true})});
+    var nav=document.querySelector('.sidebar .nav');if(nav)new MutationObserver(ensureProgressNav).observe(nav,{childList:true,subtree:true});
     setInterval(scan,1000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
