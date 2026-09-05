@@ -5,6 +5,15 @@ export default function handler(req, res) {
   try {
     let html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
     const injection = `
+<link rel="stylesheet" href="/css/architecture.css">
+<script type="module" src="/js/app-shell.js"></script>
+<script type="module" src="/js/dashboard.js"></script>
+<script type="module" src="/js/flashcards.js"></script>
+<script type="module" src="/js/vocabulary.js"></script>
+<script type="module" src="/js/practice.js"></script>
+<script type="module" src="/js/quiz.js"></script>
+<script type="module" src="/js/progress.js"></script>
+<script type="module" src="/js/settings.js"></script>
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
