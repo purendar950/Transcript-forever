@@ -1,0 +1,6 @@
+/* StudyPlanner modular UI layer. Existing index.html remains the source of page markup during migration. */
+:root{--sp-purple:#7023ec;--sp-navy:#071126;--sp-border:#e1e4eb;--sp-muted:#687080}
+.page[data-module]{contain:layout style}
+.page[data-module] .titlebar{position:relative}
+.sp-module-badge{display:none}
+@media (max-width:1000px){.content{max-width:none}.page[data-module] .titlebar{gap:10px}}
