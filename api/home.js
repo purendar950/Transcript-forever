@@ -17,24 +17,6 @@ export default function handler(req, res) {
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
-.sidebar{display:flex!important;flex-direction:column!important}
-.sidebarProgressBtn{display:block!important;width:100%;margin-top:5px!important;background:transparent!important;color:#e7eaf2!important;border:0!important;border-radius:8px!important;text-align:left!important;padding:12px 13px!important;font-weight:600!important;cursor:pointer!important}
-.sidebarProgressBtn:hover,.sidebarProgressBtn.active{background:linear-gradient(90deg,#6b20ef,#7d29f0)!important;color:#fff!important}
-.sidebar .goal{display:block!important;position:static!important;left:auto!important;right:auto!important;bottom:auto!important;margin:10px 0 8px!important;padding:9px 10px!important;border-radius:11px!important;flex-shrink:0!important;order:2!important}
-.sidebar .goal h4{text-align:left!important;margin:0 0 6px!important;font-size:12px!important}
-.sidebar .goalrow{gap:8px!important}
-.sidebar .goal .ring{width:42px!important;height:42px!important;flex:0 0 42px!important}
-.sidebar .goal .ring:after{inset:4px!important}
-.sidebar .goal .outline{display:none!important}
-.sidebar .goal .goalrow>div:last-child{font-size:11px!important;line-height:1.3!important}
-.sidebar .goal .goalrow>div:last-child b{font-size:12px!important}
-.sidebar .authPanel{display:block!important;position:static!important;left:auto!important;right:auto!important;bottom:auto!important;margin:0 0 0!important;order:3!important;flex-shrink:0!important}
-.sidebar .nav{order:1!important}
-@media(max-width:1000px){
-  .sidebar{display:flex!important;position:relative!important;width:100%!important;height:auto!important}
-  .sidebar .goal{display:block!important;position:static!important;margin:10px 0 8px!important}
-  .sidebar .authPanel{display:block!important;position:static!important;margin:0!important}
-}
 </style>
 <script>
 (function(){
@@ -46,7 +28,7 @@ export default function handler(req, res) {
     var nav=document.querySelector('.sidebar .nav');if(!nav)return;
     var b=nav.querySelector('[data-progress-nav]');
     if(!b){
-      b=document.createElement('button');b.type='button';b.setAttribute('data-progress-nav','1');b.className='sidebarProgressBtn';b.textContent='◔ View Progress';
+      b=document.createElement('button');b.type='button';b.setAttribute('data-progress-nav','1');b.className='sidebarProgressBtn';b.title='View Progress';b.innerHTML='<span class="nico">◔</span> <span class="nlabel">View Progress</span>';
       b.onclick=function(){if(typeof window.go==='function')window.go('progress',b);};
       var settings=Array.from(nav.querySelectorAll('button')).find(function(x){return /AI Settings/.test(x.textContent||'')});
       if(settings)nav.insertBefore(b,settings);else nav.appendChild(b);
