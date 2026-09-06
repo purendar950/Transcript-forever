@@ -49,7 +49,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ data: [{ b64_json: b64, mime_type: contentType.split(';')[0] || 'image/png', model: currentModel }] });
           }
           lastError = `${currentModel}: ${await upstream.text() || `HTTP ${upstream.status}`}`;
-        } catch (e) { lastError = `${currentModel}: ${e?.message || String(e)}`; }
+        } catch (e) { lastError = `${currentModel}: ${e?.message || String(e)}${e?.cause && e.cause.code ? ' (' + e.cause.code + ')' : ''}`; }
       }
       return res.status(502).json({ error: 'Pollinations image generation failed for all configured image models.', detail: lastError, attemptedModels: models });
     }
@@ -59,18 +59,31 @@ export default async function handler(req, res) {
     if (apiUser) headers['X-API-User'] = apiUser;
     headers['Content-Type'] = 'application/json';
 
+    // Join baseUrl with an OpenAI-style suffix without discarding a configured path.
+    // https://host            -> https://host/v1/chat/completions
+    // https://host/v1         -> https://host/v1/chat/completions
+    // https://host/compat/v1  -> https://host/compat/v1/chat/completions
+    // https://host/v1/chat/completions (pasted full URL) -> used as-is
+    const joinEp = (suffix) => {
+      const p = url.pathname.replace(/\/+$/, '');
+      if (p.endsWith(suffix)) return url.origin + p;
+      if (/\/v\d+$/.test(p)) return url.origin + p + suffix;
+      if (!p) return url.origin + '/v1' + suffix;
+      return url.origin + p + '/v1' + suffix;
+    };
+
     if (action === 'chat') {
       let lastStatus = 502;
       let lastError = 'Text AI request failed.';
       for (const currentModel of models) {
-        const target = new URL('/v1/chat/completions', url).toString();
+        const target = joinEp('/chat/completions');
         const body = JSON.stringify({ model: currentModel, messages: messages || [{ role: 'user', content: 'Reply with OK only.' }], max_tokens: 2400 });
         try {
           const upstream = await fetch(target, { method: 'POST', headers, body });
           const text = await upstream.text();
           if (upstream.ok) { res.status(upstream.status); res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json'); return res.send(text); }
           lastStatus = upstream.status; lastError = `${currentModel}: ${text || `HTTP ${upstream.status}`}`;
-        } catch (e) { lastStatus = 502; lastError = `${currentModel}: ${e?.message || String(e)}`; }
+        } catch (e) { lastStatus = 502; lastError = `${currentModel}: ${e?.message || String(e)}${e?.cause && e.cause.code ? ' (' + e.cause.code + ')' : ''}`; }
       }
       return res.status(lastStatus).json({ error: 'Text AI request failed for all configured models.', detail: lastError, attemptedModels: models });
     }
@@ -79,22 +92,21 @@ export default async function handler(req, res) {
       let lastStatus = 502;
       let lastError = 'Image generation failed.';
       for (const currentModel of models) {
-        const target = new URL('/v1/images/generations', url).toString();
+        const target = joinEp('/images/generations');
         const body = JSON.stringify({ model: currentModel, prompt, size, n: 1 });
         try {
           const upstream = await fetch(target, { method: 'POST', headers, body });
           const text = await upstream.text();
           if (upstream.ok) { res.status(upstream.status); res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/json'); return res.send(text); }
           lastStatus = upstream.status; lastError = `${currentModel}: ${text || `HTTP ${upstream.status}`}`;
-        } catch (e) { lastStatus = 502; lastError = `${currentModel}: ${e?.message || String(e)}`; }
+        } catch (e) { lastStatus = 502; lastError = `${currentModel}: ${e?.message || String(e)}${e?.cause && e.cause.code ? ' (' + e.cause.code + ')' : ''}`; }
       }
       return res.status(lastStatus).json({ error: 'Image generation failed for all configured models.', detail: lastError, attemptedModels: models });
     }
 
     // Pollinations exposes a live image-only registry at /image/models. This avoids
     // putting text models such as qwen into the Image AI selector.
-    const modelPath = host === 'gen.pollinations.ai' && type === 'image' ? '/image/models' : '/v1/models';
-    const target = new URL(modelPath, url).toString();
+    const target = (host === 'gen.pollinations.ai' && type === 'image') ? (url.origin + '/image/models') : joinEp('/models');
     const upstream = await fetch(target, { method: 'GET', headers });
     const text = await upstream.text();
     res.status(upstream.status);
