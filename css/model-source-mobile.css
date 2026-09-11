@@ -1,7 +1,7 @@
 /* StudyPlanner — clean Model Source panel, especially on Android */
 .tfms{background:#fff;border:1px solid #d9dde6;border-radius:12px;padding:12px;margin-top:10px;box-shadow:0 2px 8px #1111}
-.tfmsToggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.tfmsToggleTitle{grid-column:1/-1;font-size:12px;font-weight:850;color:#4b5563;letter-spacing:.08em;text-transform:uppercase;padding:2px 2px 4px}
+.tfmsToggle{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important}
+.tfmsToggleTitle{grid-column:1/-1!important;font-size:12px;font-weight:850;color:#4b5563;letter-spacing:.08em;text-transform:uppercase;padding:2px 2px 4px}
 .tfmsToggle label{display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;margin:0!important;min-height:48px;padding:10px 11px;border:1px solid #dfe3ea;border-radius:10px;background:#fafbfc;color:#374151;font-size:13px;font-weight:750;line-height:1.25;cursor:pointer}
 .tfmsToggle label:has(input:checked){border-color:#7023ec;background:#f5f0ff;color:#4f1db1;box-shadow:0 0 0 2px #7023ec18}
 .tfmsToggle input{width:19px!important;height:19px!important;min-width:19px!important;flex:0 0 19px!important;margin:0!important;accent-color:#7023ec}
@@ -11,12 +11,12 @@
 .tfmsAddBtn{min-height:40px}
 @media(max-width:480px){
   .tfms{padding:11px}
-  .tfmsToggle{grid-template-columns:1fr 1fr;gap:7px}
+  .tfmsToggle{grid-template-columns:1fr 1fr!important;gap:7px!important}
   .tfmsToggle label{min-height:52px;padding:9px;font-size:12px}
   .tfmsToggle label input{margin-right:1px!important}
 }
 @media(max-width:360px){
-  .tfmsToggle{grid-template-columns:1fr}
+  .tfmsToggle{grid-template-columns:1fr!important}
   .tfmsToggleTitle{font-size:11px}
   .tfmsToggle label{min-height:46px;font-size:12px}
   .tfmsInputRow{flex-direction:column;align-items:stretch}
