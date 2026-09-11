@@ -7,6 +7,7 @@ export default function handler(req, res) {
     const injection = `
 <link rel="stylesheet" href="/css/architecture.css">
 <link rel="stylesheet" href="/css/mobile-android.css">
+<link rel="stylesheet" href="/css/mobile-controls.css">
 <script type="module" src="/js/app-shell.js"></script>
 <script type="module" src="/js/dashboard.js"></script>
 <script type="module" src="/js/flashcards.js"></script>
