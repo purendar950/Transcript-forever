@@ -1,0 +1,165 @@
+/* StudyPlanner — layout polish layer (loaded LAST so it wins ties in the cascade).
+   Scope: tablet squeeze fix, consistent topbar height, mobile touch targets,
+   FAB/background-pill overlap, CLS + render perf for long grids.
+   Pure CSS, no behavior changes. */
+
+/* ------------------------------------------------------------------
+   1. Tablet squeeze fix (1001–1280px)
+   .meaning reserves a fixed 285px right padding for the absolutely
+   positioned art box; on tablets that leaves a ~450px reading column.
+   Stack the art below the text instead (mirrors the ≤1000px behavior).
+------------------------------------------------------------------ */
+@media (min-width:1001px) and (max-width:1280px){
+  .meaning{padding-right:0}
+  .meaning .art{position:relative;width:100%;margin-top:15px;min-height:200px;height:auto;aspect-ratio:13/10}
+  .meaning .art .visualImg{height:100%}
+  /* Shrink the fixed 390px right rail so the study card keeps room */
+  .layout{grid-template-columns:minmax(0,1fr) 340px}
+}
+
+/* ------------------------------------------------------------------
+   2. Consistent topbar height across the mobile layers
+   (was 58px / 60px / 54px depending on which stylesheet won)
+------------------------------------------------------------------ */
+:root{--sp-topbar-h:58px;--sp-topbar-h-sm:54px}
+@media (max-width:1000px){
+  .topbar{height:var(--sp-topbar-h);min-height:var(--sp-topbar-h)}
+}
+@media (max-width:600px){
+  .topbar{height:var(--sp-topbar-h-sm);min-height:var(--sp-topbar-h-sm)}
+}
+
+/* ------------------------------------------------------------------
+   3. Touch targets on touch-first widths (≥44px guidance)
+   Chips were ~26px tall; delete buttons were 24px.
+------------------------------------------------------------------ */
+@media (max-width:1000px){
+  .dashCatChip,.dashStatusChip{padding:9px 15px;min-height:40px}
+  .catchip,.lvlbadge{padding:7px 14px;min-height:32px}
+  .addChip{padding:7px 13px;min-height:32px}
+  .pqAgain{padding:6px 14px;min-height:32px}
+  .catEdit{min-height:32px}
+  .itemDel{width:32px;height:32px;font-size:14px}
+  .dueBtn{padding:10px 16px;min-height:42px}
+  .sbBurger,.tbSearch{width:42px;height:42px}
+}
+
+/* ------------------------------------------------------------------
+   4. FAB vs "background generation" pill overlap
+   Both were pinned bottom-right; the pill now sits above the FAB.
+------------------------------------------------------------------ */
+@media (max-width:1000px){
+  .addBgPill{bottom:88px;right:14px;max-width:min(86vw,480px)}
+}
+
+/* ------------------------------------------------------------------
+   5. CLS + long-grid render perf
+   - Lavender placeholder behind visuals while images decode
+   - Skip rendering offscreen word cards (500+ word grids)
+------------------------------------------------------------------ */
+.meaning .art{background:#efe7f8}
+.wordItem{content-visibility:auto;contain-intrinsic-size:auto 132px}
+
+/* ------------------------------------------------------------------
+   6. Focus visibility (keyboard users could previously Tab into
+   invisible-focus states on white-on-white chips)
+------------------------------------------------------------------ */
+.wordItem:focus-visible,
+.dashCatChip:focus-visible,.dashStatusChip:focus-visible,
+.btn:focus-visible,.dueBtn:focus-visible,.nav button:focus-visible,
+.quizOption:focus-visible,.mkOpt:focus-visible{
+  outline:3px solid #8b5cf6;outline-offset:2px
+}
+
+/* ------------------------------------------------------------------
+   7. Word card dead space (all viewports, both themes)
+   .layout is a grid whose children stretch, so the study card grows
+   to the right rail's height (~640px) while the un-flipped front only
+   has ~400px of content — leaving a large void under the hint text.
+   Center the flipcard vertically so the height is used gracefully
+   and the card keeps a stable size when flipping.
+------------------------------------------------------------------ */
+.card.flash{display:flex;flex-direction:column}
+.card.flash #flipcard{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* ------------------------------------------------------------------
+   8. FAB clearance
+   The FAB is the only "+ Add Word" entry on Practice / Test Zone /
+   Mistakes / Progress / Settings, but fixed at the viewport corner it
+   permanently covers the right rail's "I Forgot" button on desktop.
+   Desktop instead gets a persistent "＋ Add Word" action in the
+   sidebar (section 8b) and the FAB is retired there; on ≤1000px the
+   sidebar is a drawer, so the FAB stays and content gets bottom
+   clearance so nothing important is trapped under it.
+------------------------------------------------------------------ */
+@media (min-width:1001px){
+  .fab{display:none}
+}
+@media (min-width:601px) and (max-width:1000px){
+  .content{padding-bottom:90px}
+}
+
+/* 8b. Sidebar "＋ Add Word" action (desktop companion for the FAB).
+   Lives inside .nav, so collapsed-sidebar (body.sbc) icon-only
+   behavior and mobile drawer styles apply automatically. */
+.nav .sbAdd{
+  margin:10px 8px 2px;
+  padding:11px 12px;
+  border:0;border-radius:9px;
+  background:linear-gradient(90deg,#6724e8,#8b3df5);
+  color:#fff;font-weight:800;font-size:14px;
+  text-align:left;cursor:pointer;
+  box-shadow:0 4px 14px rgba(103,36,232,.35);
+}
+.nav .sbAdd:hover{filter:brightness(1.08)}
+.nav .sbAdd .nico{font-weight:800}
+body.sbc .nav .sbAdd{text-align:center;padding:12px 4px;margin:10px 4px 2px}
+/* The theme toggle (js/theme.js) uses its own label class, so the
+   collapsed-sidebar rule that hides .nlabel missed it — the label
+   wrapped and clipped at the sidebar edge. */
+body.sbc .spThemeLabel{display:none}
+body.sbc .spThemeBtn{justify-content:center;text-align:center}
+
+/* ------------------------------------------------------------------
+   9. Single-row swipe affordance (≤600px)
+   mobile-controls.css deliberately locks control rows to one
+   horizontally swipeable line with the scrollbar hidden — but nothing
+   tells users the row scrolls, so "Previous / Next" or "○ Not Seen"
+   look cut off with no way to discover the rest. Add a right-edge
+   fade (mask, so it works in both themes) + scroll snap.
+   Only the right edge fades: at scroll position 0 that is exactly
+   where the hidden content lives.
+------------------------------------------------------------------ */
+@media (max-width:600px){
+  .titlebar .actions,
+  .sp-mobile-single-row,
+  .filterRow,.filters,.chipRow{
+    scroll-snap-type:x proximity;
+    -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent);
+            mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent);
+  }
+  .titlebar .actions>*,
+  .sp-mobile-single-row>*{scroll-snap-align:start}
+}
+
+/* ------------------------------------------------------------------
+   10. Word-card metadata chips must WRAP (≤768px)
+   mobile-controls.css locks .chiprow to one clipped line, and
+   mobile-android.css hides overflow on .flip-front — combined, the
+   "New" and "SSC VOCAB" badges are pushed fully off-screen and are
+   unreachable (scrollWidth == clientWidth, so there is nothing to
+   swipe). These are information, not controls: wrap them instead.
+   Scoped to the flashcard's chiprow only — filter rows stay
+   single-line by design.
+------------------------------------------------------------------ */
+@media (max-width:768px){
+  .flipcard .chiprow{
+    flex-wrap:wrap !important;
+    overflow:visible !important;
+    justify-content:center !important;
+  }
+  .flipcard .chiprow>*{
+    flex:0 1 auto !important;
+    max-width:100% !important;
+  }
+}
