@@ -1,0 +1,139 @@
+/* StudyPlanner — fixed single-line control rows for Android */
+@media (max-width: 768px) {
+  /* Add Word with AI / Delete / Due Today: keep the action controls on one row. */
+  .titlebar .actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100%;
+    min-width: 0;
+    gap: 6px !important;
+    overflow: hidden;
+  }
+
+  .titlebar .actions > * {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 7px !important;
+    padding-right: 7px !important;
+    font-size: 12px;
+  }
+
+  .titlebar .actions .primary {
+    grid-column: auto !important;
+  }
+
+  /* Category filters: ALWAYS one horizontal row. Swipe sideways on narrow phones. */
+  .filterRow,
+  .filters,
+  .chipRow {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    gap: 7px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .filterRow::-webkit-scrollbar,
+  .filters::-webkit-scrollbar,
+  .chipRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filterRow > *,
+  .filters > *,
+  .chipRow > * {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    max-width: none !important;
+  }
+
+  /* Remember / Not Remember / Not Seen: same permanent single row. */
+  .filterRow .dueBtn,
+  .filters .dueBtn,
+  .chipRow .dueBtn {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+
+  /* Flashcard metadata chips are also kept in one row without overlap. */
+  .chiprow {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    justify-content: flex-start !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chiprow::-webkit-scrollbar { display: none; }
+  .chiprow > * {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    max-width: none !important;
+    overflow-wrap: normal !important;
+  }
+
+  /* Previous / counter / Next: NEVER stack on phones, including <=360px. */
+  .pagination,
+  .pager {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    width: 100%;
+    min-width: 0;
+    gap: 7px !important;
+    align-items: center;
+  }
+
+  .pagination > *,
+  .pager > * {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .pagination .btn,
+  .pager .btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 360px) {
+  .titlebar .actions {
+    gap: 4px !important;
+  }
+
+  .titlebar .actions > * {
+    font-size: 11px;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+  }
+
+  .filterRow,
+  .filters,
+  .chipRow,
+  .chiprow {
+    gap: 6px !important;
+  }
+
+  .pagination,
+  .pager {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+  }
+}
