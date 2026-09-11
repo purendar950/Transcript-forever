@@ -1,25 +1,32 @@
 /* StudyPlanner — fixed single-line control rows for Android */
 @media (max-width: 768px) {
-  /* Add Word with AI / Delete / Due Today: keep the action controls on one row. */
+  /* Dashboard actions: never wrap or truncate. Swipe horizontally on very narrow phones. */
   .titlebar .actions {
     display: flex !important;
     flex-wrap: nowrap !important;
     width: 100%;
     min-width: 0;
     gap: 6px !important;
-    overflow: hidden;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    justify-content: flex-start !important;
+    padding-bottom: 2px;
   }
 
+  .titlebar .actions::-webkit-scrollbar { display: none; }
+
   .titlebar .actions > * {
-    flex: 1 1 0 !important;
+    flex: 0 0 auto !important;
     width: auto !important;
-    min-width: 0 !important;
+    min-width: max-content !important;
     max-width: none !important;
     white-space: nowrap !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding-left: 7px !important;
-    padding-right: 7px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    padding: 8px 10px !important;
     font-size: 12px;
   }
 
@@ -27,7 +34,39 @@
     grid-column: auto !important;
   }
 
-  /* Category filters: ALWAYS one horizontal row. Swipe sideways on narrow phones. */
+  /* Category/status groups are assigned these classes by mobile-controls.js. */
+  .sp-mobile-single-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+    gap: 7px !important;
+    padding-bottom: 4px !important;
+    justify-content: flex-start !important;
+  }
+
+  .sp-mobile-single-row::-webkit-scrollbar { display: none; }
+
+  .sp-mobile-single-row > * {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+  }
+
+  .sp-mobile-single-row button,
+  .sp-mobile-single-row .btn,
+  .sp-mobile-single-row .dueBtn {
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* Fallback for existing generic filter-row implementations. */
   .filterRow,
   .filters,
   .chipRow {
@@ -46,9 +85,7 @@
 
   .filterRow::-webkit-scrollbar,
   .filters::-webkit-scrollbar,
-  .chipRow::-webkit-scrollbar {
-    display: none;
-  }
+  .chipRow::-webkit-scrollbar { display: none; }
 
   .filterRow > *,
   .filters > *,
@@ -58,15 +95,7 @@
     max-width: none !important;
   }
 
-  /* Remember / Not Remember / Not Seen: same permanent single row. */
-  .filterRow .dueBtn,
-  .filters .dueBtn,
-  .chipRow .dueBtn {
-    flex: 0 0 auto !important;
-    white-space: nowrap !important;
-  }
-
-  /* Flashcard metadata chips are also kept in one row without overlap. */
+  /* Flashcard metadata chips: keep them together without overlap. */
   .chiprow {
     display: flex !important;
     flex-wrap: nowrap !important;
@@ -87,7 +116,7 @@
     overflow-wrap: normal !important;
   }
 
-  /* Previous / counter / Next: NEVER stack on phones, including <=360px. */
+  /* Previous / counter / Next: NEVER stack on phones. */
   .pagination,
   .pager {
     display: grid !important;
@@ -115,22 +144,18 @@
 }
 
 @media (max-width: 360px) {
-  .titlebar .actions {
-    gap: 4px !important;
-  }
+  .titlebar .actions { gap: 4px !important; }
 
   .titlebar .actions > * {
     font-size: 11px;
-    padding-left: 5px !important;
-    padding-right: 5px !important;
+    padding: 7px 8px !important;
   }
 
+  .sp-mobile-single-row,
   .filterRow,
   .filters,
   .chipRow,
-  .chiprow {
-    gap: 6px !important;
-  }
+  .chiprow { gap: 6px !important; }
 
   .pagination,
   .pager {
