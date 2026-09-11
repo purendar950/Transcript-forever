@@ -16,6 +16,7 @@ export default function handler(req, res) {
 <script type="module" src="/js/quiz.js"></script>
 <script type="module" src="/js/progress.js"></script>
 <script type="module" src="/js/settings.js"></script>
+<script type="module" src="/js/model-selector.js"></script>
 <script type="module" src="/js/mobile-controls.js"></script>
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
