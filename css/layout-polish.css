@@ -1,0 +1,72 @@
+/* StudyPlanner — layout polish layer (loaded LAST so it wins ties in the cascade).
+   Scope: tablet squeeze fix, consistent topbar height, mobile touch targets,
+   FAB/background-pill overlap, CLS + render perf for long grids.
+   Pure CSS, no behavior changes. */
+
+/* ------------------------------------------------------------------
+   1. Tablet squeeze fix (1001–1280px)
+   .meaning reserves a fixed 285px right padding for the absolutely
+   positioned art box; on tablets that leaves a ~450px reading column.
+   Stack the art below the text instead (mirrors the ≤1000px behavior).
+------------------------------------------------------------------ */
+@media (min-width:1001px) and (max-width:1280px){
+  .meaning{padding-right:0}
+  .meaning .art{position:relative;width:100%;margin-top:15px;min-height:200px;height:auto;aspect-ratio:13/10}
+  .meaning .art .visualImg{height:100%}
+  /* Shrink the fixed 390px right rail so the study card keeps room */
+  .layout{grid-template-columns:minmax(0,1fr) 340px}
+}
+
+/* ------------------------------------------------------------------
+   2. Consistent topbar height across the mobile layers
+   (was 58px / 60px / 54px depending on which stylesheet won)
+------------------------------------------------------------------ */
+:root{--sp-topbar-h:58px;--sp-topbar-h-sm:54px}
+@media (max-width:1000px){
+  .topbar{height:var(--sp-topbar-h);min-height:var(--sp-topbar-h)}
+}
+@media (max-width:600px){
+  .topbar{height:var(--sp-topbar-h-sm);min-height:var(--sp-topbar-h-sm)}
+}
+
+/* ------------------------------------------------------------------
+   3. Touch targets on touch-first widths (≥44px guidance)
+   Chips were ~26px tall; delete buttons were 24px.
+------------------------------------------------------------------ */
+@media (max-width:1000px){
+  .dashCatChip,.dashStatusChip{padding:9px 15px;min-height:40px}
+  .catchip,.lvlbadge{padding:7px 14px;min-height:32px}
+  .addChip{padding:7px 13px;min-height:32px}
+  .pqAgain{padding:6px 14px;min-height:32px}
+  .catEdit{min-height:32px}
+  .itemDel{width:32px;height:32px;font-size:14px}
+  .dueBtn{padding:10px 16px;min-height:42px}
+  .sbBurger,.tbSearch{width:42px;height:42px}
+}
+
+/* ------------------------------------------------------------------
+   4. FAB vs "background generation" pill overlap
+   Both were pinned bottom-right; the pill now sits above the FAB.
+------------------------------------------------------------------ */
+@media (max-width:1000px){
+  .addBgPill{bottom:88px;right:14px;max-width:min(86vw,480px)}
+}
+
+/* ------------------------------------------------------------------
+   5. CLS + long-grid render perf
+   - Lavender placeholder behind visuals while images decode
+   - Skip rendering offscreen word cards (500+ word grids)
+------------------------------------------------------------------ */
+.meaning .art{background:#efe7f8}
+.wordItem{content-visibility:auto;contain-intrinsic-size:auto 132px}
+
+/* ------------------------------------------------------------------
+   6. Focus visibility (keyboard users could previously Tab into
+   invisible-focus states on white-on-white chips)
+------------------------------------------------------------------ */
+.wordItem:focus-visible,
+.dashCatChip:focus-visible,.dashStatusChip:focus-visible,
+.btn:focus-visible,.dueBtn:focus-visible,.nav button:focus-visible,
+.quizOption:focus-visible,.mkOpt:focus-visible{
+  outline:3px solid #8b5cf6;outline-offset:2px
+}

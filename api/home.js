@@ -20,10 +20,14 @@ export default function handler(req, res) {
 <script type="module" src="/js/mobile-controls.js"></script>
 <script type="module" src="/js/ai-response-safety.js"></script>
 <script type="module" src="/js/ai-card-recovery.js"></script>
+<script type="module" src="/js/theme.js"></script>
+<script type="module" src="/js/a11y.js"></script>
 <link rel="stylesheet" href="/css/model-source-mobile.css">
+<link rel="stylesheet" href="/css/layout-polish.css">
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
+html[data-theme="dark"] .providerActions .editProviderBtn{border-color:#6724e8;color:#b29bf5;background:#16213a}
 </style>
 <script>
 (function(){
