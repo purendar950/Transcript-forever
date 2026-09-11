@@ -1,0 +1,240 @@
+/* StudyPlanner — Android/mobile polish layer
+   Loaded after the existing architecture stylesheet.
+   Purpose: prevent chip overlap, horizontal overflow and cramped controls
+   on narrow Android browsers (320px–768px). */
+
+@media (max-width: 768px) {
+  /* Never allow a page section to create a horizontal scroll area. */
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .main, .content, .page, .card, .flash, .right,
+  .titlebar, .actions, .layout {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* Keep the top action area inside the viewport. */
+  .titlebar {
+    width: 100%;
+  }
+
+  .actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .actions > * {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  /* IMPORTANT: flashcard category/status chips must WRAP.
+     The previous generic mobile rule made .chiprow nowrap, which caused
+     the Vocabulary/New/SSC Vocab chips to overlap on Android. */
+  .chiprow {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 8px !important;
+    padding: 2px 0 !important;
+  }
+
+  .chiprow > * {
+    flex: 0 1 auto !important;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Filter rows are intentionally horizontal-scrollable; flashcard chips are not. */
+  .filterRow, .filters, .chipRow {
+    display: flex;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+
+  .filterRow::-webkit-scrollbar,
+  .filters::-webkit-scrollbar,
+  .chipRow::-webkit-scrollbar { display: none; }
+
+  .filterRow > *, .filters > *, .chipRow > * {
+    flex: 0 0 auto !important;
+  }
+
+  /* Flashcard header: bookmark stays in its own safe column. */
+  .flip-front {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .flip-front .word {
+    max-width: calc(100% - 42px);
+    margin-left: auto;
+    margin-right: auto;
+    overflow-wrap: anywhere;
+  }
+
+  .flip-front .pronline {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* Prevent long labels from forcing cards wider than the phone. */
+  .tag, .hard, .catchip, .lvlbadge,
+  .dueBtn, .btn, button, select, input, textarea {
+    max-width: 100%;
+  }
+
+  button, .btn, .dueBtn {
+    touch-action: manipulation;
+  }
+
+  /* Pagination: never let a long centre counter squeeze the buttons off-screen. */
+  .pagination, .pager {
+    width: 100%;
+    min-width: 0;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(48px, auto) minmax(0, 1fr) !important;
+    gap: 7px !important;
+  }
+
+  .pagination > *, .pager > * { min-width: 0; }
+  .pagination .btn, .pager .btn {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The empty-state area should remain readable on narrow devices. */
+  .empty {
+    padding: 24px 14px;
+    overflow-wrap: anywhere;
+  }
+
+  /* Practice/question cards. */
+  .quizQuestion, .quizOption, .correct,
+  .confuse, .section, .block {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .quizOption {
+    white-space: normal;
+  }
+
+  /* Tables / progress bars should scale instead of pushing the page sideways. */
+  .pgChartsGrid, .pieWrap, .catBar, .cbTrack {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cbName {
+    flex: 0 1 92px;
+    min-width: 0;
+  }
+
+  .cbNums {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .card {
+    width: 100%;
+    border-radius: 12px;
+  }
+
+  .flash {
+    padding: 14px 12px;
+  }
+
+  .flip-front {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .flip-front .word {
+    font-size: clamp(30px, 9vw, 38px);
+  }
+
+  .chiprow {
+    gap: 7px !important;
+  }
+
+  .chiprow > * {
+    font-size: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .art {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .fab {
+    right: max(12px, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 360px) {
+  .content {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .flash {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .chiprow > * {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .titlebar h1 {
+    font-size: 21px;
+  }
+
+  .pagination, .pager {
+    grid-template-columns: 1fr !important;
+  }
+
+  .pagination > *, .pager > * {
+    width: 100%;
+  }
+}
+
+/* Android Chrome sometimes honors minimum intrinsic widths from flex/grid
+   children even when the parent has min-width:0. Explicitly neutralize them. */
+@media (max-width: 768px) {
+  .page *, .content *, .card * {
+    min-width: 0;
+  }
+
+  img, video, svg, canvas {
+    max-width: 100%;
+  }
+}
