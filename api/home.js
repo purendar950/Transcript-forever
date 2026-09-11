@@ -18,6 +18,8 @@ export default function handler(req, res) {
 <script type="module" src="/js/settings.js"></script>
 <script type="module" src="/js/model-selector.js"></script>
 <script type="module" src="/js/mobile-controls.js"></script>
+<script type="module" src="/js/ai-response-safety.js"></script>
+<link rel="stylesheet" href="/css/model-source-mobile.css">
 <style>
 .providerActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .providerActions .editProviderBtn{border-color:#6724e8;color:#6724e8;background:#fff}
