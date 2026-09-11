@@ -56,11 +56,11 @@
     if (!Array.isArray(raw.opts) || raw.opts.length !== 4) return null;
     if (!Number.isInteger(raw.ans) || raw.ans < 0 || raw.ans > 3) return null;
 
-    const catMeta = window.CAT_META || {};
-    const heuristic = typeof window.heuristicCategory === 'function' ? window.heuristicCategory(word) : 'Vocabulary';
+    const allowed = new Set(['Vocabulary', 'Idiom', 'Phrasal Verb', 'One-Word Substitution', 'Confusing Words']);
+    const recoveredCategory = allowed.has(clean(raw.category)) ? clean(raw.category) : 'Vocabulary';
     return Object.assign({}, raw, {
       word,
-      category: category !== 'auto' ? category : (catMeta[raw.category] ? raw.category : heuristic),
+      category: category !== 'auto' ? category : recoveredCategory,
       createdAt: Date.now()
     });
   }
