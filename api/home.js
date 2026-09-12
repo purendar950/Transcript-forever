@@ -44,110 +44,42 @@ export default function handler(req, res) {
   function getProviders(){try{return JSON.parse(localStorage.getItem('sscAIProviders')||'[]')}catch(e){return[]}}
   function putProviders(p){localStorage.setItem('sscAIProviders',JSON.stringify(p))}
   function getId(box){var b=box.querySelector('button[onclick*=\"setActive\"]');var m=b&&b.getAttribute('onclick').match(/setActive\\(['\"]([^'\"]+)/);return m?m[1]:null}
+  function esc(v){return String(v==null?'':v).replace(/[&<>\"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])})}
 
   function initModelEditor(){
     var input=document.getElementById('pModel');
-    if(!input)return;
-    if(input.dataset.multiModelReady)return;
+    if(!input||input.dataset.multiModelReady)return;
     input.dataset.multiModelReady='1';
-
-    var row=document.createElement('div');
-    row.className='pmModelRow';
-    input.parentNode.insertBefore(row,input);
-    row.appendChild(input);
-
-    var add=document.createElement('button');
-    add.type='button';
-    add.className='pmAddModelBtn';
-    add.textContent='+';
-    add.title='Add another model';
-    add.setAttribute('aria-label','Add another model');
-    row.appendChild(add);
-
-    var chips=document.createElement('div');
-    chips.className='pmModelChips';
-    chips.setAttribute('aria-label','Selected models');
-    row.parentNode.insertBefore(chips,row.nextSibling);
-
-    var hint=document.createElement('div');
-    hint.className='pmModelHint';
-    hint.textContent='Add multiple model IDs with +. The models will be tried in the order shown.';
-    row.parentNode.insertBefore(hint,chips.nextSibling);
+    var row=document.createElement('div');row.className='pmModelRow';
+    input.parentNode.insertBefore(row,input);row.appendChild(input);
+    var add=document.createElement('button');add.type='button';add.className='pmAddModelBtn';add.textContent='+';add.title='Add another model';add.setAttribute('aria-label','Add another model');row.appendChild(add);
+    var chips=document.createElement('div');chips.className='pmModelChips';chips.setAttribute('aria-label','Selected models');row.parentNode.insertBefore(chips,row.nextSibling);
+    var hint=document.createElement('div');hint.className='pmModelHint';hint.textContent='Add multiple model IDs with +. The models will be tried in the order shown.';row.parentNode.insertBefore(hint,chips.nextSibling);
 
     function render(){
-      var list=models(input.value);
-      chips.innerHTML=list.map(function(m){
-        return '<span class="pmModelChip" title="'+esc(m)+'"><span class="pmModelChipName">'+esc(m)+'</span><button type="button" class="pmRemoveModel" data-model="'+esc(m)+'" aria-label="Remove '+esc(m)+'">×</button></span>';
-      }).join('');
-    }
-    function addModel(){
-      var name=input.value.trim();
-      if(!name)return;
-      var list=models(input.value);
-      /* When the input already contains a comma-separated list, preserve it and add the new value. */
-      if(list.some(function(m){return m.toLowerCase()===name.toLowerCase()}))return;
-      list.push(name);
-      input.value=list.join(', ');
-      input.dataset.editingList='1';
-      render();
-      input.focus();
-      input.value='';
-      input.dataset.modelDraft='';
-    }
-    function addFromDraft(){
-      var draft=input.value.trim();
-      if(!draft)return;
-      var existing=input.dataset.modelList||'';
-      var list=models(existing);
-      if(list.some(function(m){return m.toLowerCase()===draft.toLowerCase()})){input.value='';return;}
-      list.push(draft);
-      input.dataset.modelList=list.join(', ');
-      input.value='';
-      syncHidden();
-      render();
-    }
-    function syncHidden(){
-      input.value=input.dataset.modelList||'';
-    }
-    function load(){
-      input.dataset.modelList=models(input.value).join(', ');
-      input.value='';
-      render();
+      var list=models(input.dataset.modelList||'');
+      chips.innerHTML=list.map(function(m){return '<span class="pmModelChip" title="'+esc(m)+'"><span class="pmModelChipName">'+esc(m)+'</span><button type="button" class="pmRemoveModel" data-model="'+esc(m)+'" aria-label="Remove '+esc(m)+'">×</button></span>';}).join('');
     }
     function commitDraft(){
       var draft=input.value.trim();
       if(!draft)return;
       var list=models(input.dataset.modelList||'');
-      draft.split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean).forEach(function(m){
-        if(!list.some(function(x){return x.toLowerCase()===m.toLowerCase()}))list.push(m);
-      });
-      input.dataset.modelList=list.join(', ');
-      input.value='';
-      syncHidden();
-      render();
+      draft.split(/[\\n,]+/).map(function(x){return x.trim()}).filter(Boolean).forEach(function(m){if(!list.some(function(x){return x.toLowerCase()===m.toLowerCase()}))list.push(m);});
+      input.dataset.modelList=list.join(', ');input.value='';render();
     }
+    function load(){input.dataset.modelList=models(input.value).join(', ');input.value='';render();}
     add.addEventListener('click',function(){commitDraft();input.focus()});
-    input.addEventListener('keydown',function(e){
-      if(e.key==='Enter'){
-        e.preventDefault();
-        commitDraft();
-      }
-    });
+    input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();commitDraft()}});
     chips.addEventListener('click',function(e){
-      var b=e.target.closest('.pmRemoveModel');
-      if(!b)return;
+      var b=e.target.closest('.pmRemoveModel');if(!b)return;
       var name=b.getAttribute('data-model');
-      var list=models(input.dataset.modelList||'').filter(function(m){return m!==name});
-      input.dataset.modelList=list.join(', ');
-      syncHidden();
-      render();
+      input.dataset.modelList=models(input.dataset.modelList||'').filter(function(m){return m!==name}).join(', ');render();
     });
-
     window._syncModelEditor=function(){load()};
     window._commitModelEditor=function(){commitDraft()};
+    window._getModelEditorValue=function(){return input.dataset.modelList||''};
     load();
   }
-  function esc(v){return String(v==null?'':v).replace(/[&<>\"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])})}
 
   function ensureProgressNav(){
     var nav=document.querySelector('.sidebar .nav');if(!nav)return;
@@ -163,8 +95,7 @@ export default function handler(req, res) {
     var goalBtn=document.querySelector('.goal .outline');if(goalBtn)goalBtn.remove();
   }
   function scan(){
-    ensureProgressNav();
-    initModelEditor();
+    ensureProgressNav();initModelEditor();
     ['textProviders','imageProviders'].forEach(function(cid){
       var root=document.getElementById(cid);if(!root)return;
       root.querySelectorAll('.provider').forEach(function(box){
@@ -172,18 +103,11 @@ export default function handler(req, res) {
         var id=getId(box);if(!id)return;
         var actions=box.querySelector('div[style*=\"margin-top\"]');if(!actions)return;
         actions.classList.add('providerActions');
-        var b=document.createElement('button');b.type='button';b.className='btn editProviderBtn';b.textContent='Edit';
-        b.onclick=function(){openEdit(id)};actions.appendChild(b);
+        var b=document.createElement('button');b.type='button';b.className='btn editProviderBtn';b.textContent='Edit';b.onclick=function(){openEdit(id)};actions.appendChild(b);
       });
     });
   }
-  function resetModal(){
-    var save=document.querySelector('#providerModal .modalActions .primary');
-    if(save)save.onclick=null;
-    var h=document.querySelector('#providerModal .box h2');if(h)h.textContent='Add AI Provider';
-    if(save)save.textContent='Save Provider';
-    window._editingProviderId=null;
-  }
+  function resetModal(){var save=document.querySelector('#providerModal .modalActions .primary');if(save)save.onclick=null;var h=document.querySelector('#providerModal .box h2');if(h)h.textContent='Add AI Provider';if(save)save.textContent='Save Provider';window._editingProviderId=null}
   function openEdit(id){
     var p=getProviders().find(function(x){return x.id===id});if(!p)return;
     window._editingProviderId=id;
@@ -191,8 +115,7 @@ export default function handler(req, res) {
     set('pName',p.name);set('pType',p.type||'text');set('pBase',p.baseUrl);set('pModel',models(p.model).join(', '));set('pUser',p.apiUser);set('pKey','');set('pSize',p.size||'1024x1024');
     if(typeof window._syncModelEditor==='function')window._syncModelEditor();
     var h=document.querySelector('#providerModal .box h2');if(h)h.textContent='Edit AI Provider';
-    var save=document.querySelector('#providerModal .modalActions .primary');
-    if(save){save.textContent='Save Changes';save.onclick=function(){window._saveEditedProvider()};}
+    var save=document.querySelector('#providerModal .modalActions .primary');if(save){save.textContent='Save Changes';save.onclick=function(){window._saveEditedProvider()};}
     if(typeof window.toggleImageFields==='function')window.toggleImageFields();
     var st=document.getElementById('providerStatus');if(st)st.textContent='Editing '+(p.name||'provider');
     var modal=document.getElementById('providerModal');if(modal)modal.classList.add('show');
@@ -202,15 +125,12 @@ export default function handler(req, res) {
     if(typeof window._commitModelEditor==='function')window._commitModelEditor();
     var ps=getProviders(),p=ps.find(function(x){return x.id===id});if(!p)return;
     var val=function(id){var e=document.getElementById(id);return e?e.value.trim():''};
-    var name=val('pName'),type=document.getElementById('pType').value,base=val('pBase'),model=val('pModel'),user=val('pUser'),key=val('pKey'),size=document.getElementById('pSize').value;
-    var st=document.getElementById('providerStatus');
-    if(!name||!base||!model){if(st)st.textContent='Name, Base URL and at least one Model are required.';return}
+    var name=val('pName'),type=document.getElementById('pType').value,base=val('pBase'),model=typeof window._getModelEditorValue==='function'?window._getModelEditorValue():val('pModel'),user=val('pUser'),key=val('pKey'),size=document.getElementById('pSize').value;
+    var st=document.getElementById('providerStatus');if(!name||!base||!model){if(st)st.textContent='Name, Base URL and at least one Model are required.';return}
     var oldType=p.type||'text';p.name=name;p.type=type;p.baseUrl=base.replace(/\\/$/,'');p.model=models(model).join(', ');p.apiUser=user;p.size=size;if(key)p.apiKey=key;
     if(oldType!==type){var same=ps.filter(function(x){return x!==p&&(x.type||'text')===type});p.active=same.length===0;if(p.active)same.forEach(function(x){x.active=false})}
-    putProviders(ps);
-    if(st)st.textContent='Provider updated successfully.';
-    var modal=document.getElementById('providerModal');
-    setTimeout(function(){if(modal)modal.classList.remove('show');resetModal();location.reload()},250);
+    putProviders(ps);if(st)st.textContent='Provider updated successfully.';
+    var modal=document.getElementById('providerModal');setTimeout(function(){if(modal)modal.classList.remove('show');resetModal();location.reload()},250);
   };
   function start(){
     scan();
