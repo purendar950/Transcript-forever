@@ -32,3 +32,70 @@
   window.addEventListener('focus',()=>{refreshFromCloud();});window.addEventListener('pageshow',()=>{refreshFromCloud();});document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshFromCloud();});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
+
+/* Compatibility bridge: the original app.js defines syncToCloud()/syncFromCloud()
+   and save() still calls them. Route those legacy calls through the secure RPC
+   functions and derive the user from the live Supabase session, never from the
+   stale sbSession localStorage value. */
+(() => {
+  const clientNow = () => { try { return typeof sbClient !== 'undefined' ? sbClient : null; } catch (_) { return null; } };
+  const liveUser = async () => {
+    const client = clientNow();
+    if (!client) throw new Error('Supabase client is not ready');
+    const {data, error} = await client.auth.getUser();
+    if (error) throw error;
+    const user = data && data.user;
+    if (!user || !user.id) throw new Error('No active signed-in Supabase user');
+    try { sbUser = {id:user.id,email:user.email}; } catch (_) {}
+    return user;
+  };
+  const userWords = () => {
+    try {
+      if (typeof words === 'undefined' || !Array.isArray(words)) return [];
+      const seeds = typeof seed !== 'undefined' && Array.isArray(seed) ? seed : [];
+      const hidden = typeof hiddenSeed !== 'undefined' && hiddenSeed instanceof Set ? hiddenSeed : new Set();
+      const seedKeys = new Set(seeds.map(x => String(x && x.word || '').trim().toLowerCase()));
+      return words.filter(d => {
+        const k = String(d && d.word || '').trim().toLowerCase();
+        return k && !seedKeys.has(k) && !hidden.has(k);
+      });
+    } catch (_) { return []; }
+  };
+  window.syncToCloud = async function(){
+    const client = clientNow();
+    if (!client) return;
+    const user = await liveUser();
+    const rows = userWords().map(d => ({word:String(d.word||'').trim(),json_data:{...d,generatedImage:undefined}})).filter(r=>r.word);
+    if (rows.length) {
+      const result = await client.rpc('sync_my_sb_words',{p_words:rows});
+      if (result.error) throw result.error;
+    }
+    try { if (typeof sbLastSync !== 'undefined') sbLastSync=Date.now(); } catch (_) {}
+  };
+  window.syncFromCloud = async function(){
+    const client = clientNow();
+    if (!client) return;
+    const user = await liveUser();
+    const result = await client.rpc('get_my_sb_words');
+    if (result.error) throw result.error;
+    const remote = (result.data||[]).map(row => {
+      const d=row&&row.json_data;
+      return d&&typeof d==='object' ? {...d,word:String(d.word||row.word||'').trim()} : null;
+    }).filter(Boolean);
+    const seeds = typeof seed !== 'undefined' && Array.isArray(seed) ? seed : [];
+    const hidden = typeof hiddenSeed !== 'undefined' && hiddenSeed instanceof Set ? hiddenSeed : new Set();
+    const existing = typeof words !== 'undefined' && Array.isArray(words) ? words : [];
+    const seedKeys = new Set(seeds.map(x=>String(x&&x.word||'').trim().toLowerCase()));
+    const map = new Map();
+    remote.forEach(d=>map.set(String(d.word).toLowerCase(),d));
+    existing.filter(d=>{const k=String(d&&d.word||'').trim().toLowerCase();return k&&!seedKeys.has(k)&&!hidden.has(k);}).forEach(d=>{const k=String(d.word).toLowerCase();if(!map.has(k))map.set(k,d);});
+    const userList=[...map.values()];
+    try { words=[...seeds.filter(s=>!hidden.has(String(s.word||'').toLowerCase())),...userList]; baseCount=seeds.filter(s=>!hidden.has(String(s.word||'').toLowerCase())).length; } catch (_) {}
+    try { localStorage.setItem('sscAIWords',JSON.stringify(userList)); } catch (_) {}
+    try { sbLastSync=Date.now(); } catch (_) {}
+    try { if(typeof render==='function')render(); } catch (_) {}
+    try { if(typeof renderList==='function')renderList(); } catch (_) {}
+    try { if(typeof renderFlashGrid==='function')renderFlashGrid(); } catch (_) {}
+    console.info('[Cloud Sync] legacy syncFromCloud bridged via RPC for user:',user.id);
+  };
+})();
