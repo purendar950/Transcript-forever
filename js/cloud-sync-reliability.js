@@ -1,190 +1,183 @@
-/* Cloud sync reliability layer.
- * Makes user vocabulary cloud-first on login/restore and keeps the local
- * vocabulary cache in sync across devices. Built around the existing
- * Supabase client and schema used by app.js.
- */
+/* Cloud sync reliability layer — cloud-first vocabulary restore. */
 (() => {
-  const WAIT = 1200;
+  const WAIT = 800;
   const PERIOD = 5000;
   let lastFingerprint = '';
   let busy = false;
   let bootedForUser = '';
 
-  const getState = () => {
-    try {
-      return {
-        client: typeof sbClient !== 'undefined' ? sbClient : null,
-        user: typeof sbUser !== 'undefined' ? sbUser : null,
-        list: typeof words !== 'undefined' && Array.isArray(words) ? words : null,
-        seedList: typeof seed !== 'undefined' && Array.isArray(seed) ? seed : []
-      };
-    } catch (_) {
-      return {client:null,user:null,list:null,seedList:[]};
-    }
+  const clientNow = () => {
+    try { return typeof sbClient !== 'undefined' ? sbClient : null; }
+    catch (_) { return null; }
+  };
+
+  const listNow = () => {
+    try { return typeof words !== 'undefined' && Array.isArray(words) ? words : null; }
+    catch (_) { return null; }
+  };
+
+  const seedNow = () => {
+    try { return typeof seed !== 'undefined' && Array.isArray(seed) ? seed : []; }
+    catch (_) { return []; }
   };
 
   const normaliseWord = value => String(value || '').trim();
   const wordKey = value => normaliseWord(value).toLowerCase();
 
-  function localUserWords() {
-    const s = getState();
-    if (!s.list) return [];
-    const seedKeys = new Set(s.seedList.map(x => wordKey(x.word)));
-    return s.list.filter(d => {
-      const k = wordKey(d && d.word);
-      return k && !seedKeys.has(k) && !hiddenSeedSafe().has(k);
-    });
-  }
-
   function hiddenSeedSafe() {
     try {
-      return typeof hiddenSeed !== 'undefined' && hiddenSeed instanceof Set
-        ? hiddenSeed
-        : new Set();
+      return typeof hiddenSeed !== 'undefined' && hiddenSeed instanceof Set ? hiddenSeed : new Set();
     } catch (_) { return new Set(); }
   }
 
-  function applyVocabulary(userWords) {
-    const s = getState();
-    if (!s.list || !s.seedList) return;
+  function localUserWords() {
+    const list = listNow();
+    if (!list) return [];
+    const seedKeys = new Set(seedNow().map(x => wordKey(x.word)));
+    const hidden = hiddenSeedSafe();
+    return list.filter(d => {
+      const k = wordKey(d && d.word);
+      return k && !seedKeys.has(k) && !hidden.has(k);
+    });
+  }
 
-    const seedWords = s.seedList.filter(x => !hiddenSeedSafe().has(wordKey(x.word)));
+  async function currentUser() {
+    const client = clientNow();
+    if (!client) return null;
+    try {
+      const {data, error} = await client.auth.getUser();
+      if (error) throw error;
+      return data && data.user ? data.user : null;
+    } catch (error) {
+      console.warn('[Cloud Sync] auth.getUser failed:', error);
+      return null;
+    }
+  }
+
+  function applyVocabulary(userWords) {
+    const list = listNow();
+    const seeds = seedNow();
+    if (!list || typeof words === 'undefined') return false;
+
+    const hidden = hiddenSeedSafe();
+    const seedWords = seeds.filter(x => !hidden.has(wordKey(x.word)));
     const byKey = new Map();
 
-    // Cloud data is authoritative for user-added vocabulary.
+    // Cloud rows are authoritative when the same word exists remotely.
     (userWords || []).forEach(d => {
       if (!d || !normaliseWord(d.word)) return;
-      byKey.set(wordKey(d.word), {...d, word: normaliseWord(d.word)});
+      const copy = {...d, word: normaliseWord(d.word)};
+      byKey.set(wordKey(copy.word), copy);
     });
 
-    // Preserve any local-only word that has not reached the cloud yet.
+    // Preserve local additions that have not reached the cloud yet.
     localUserWords().forEach(d => {
       const k = wordKey(d.word);
       if (!byKey.has(k)) byKey.set(k, d);
     });
 
-    const merged = [...byKey.values()].filter(d => !hiddenSeedSafe().has(wordKey(d.word)));
+    const merged = [...byKey.values()].filter(d => !hidden.has(wordKey(d.word)));
     words = [...seedWords, ...merged];
-    baseCount = seedWords.length;
+    try { baseCount = seedWords.length; } catch (_) {}
 
-    try {
-      localStorage.setItem('sscAIWords', JSON.stringify(merged));
-    } catch (_) {}
+    try { localStorage.setItem('sscAIWords', JSON.stringify(merged)); } catch (_) {}
 
-    try {
-      if (typeof refreshCurrentWordViews === 'function') refreshCurrentWordViews();
-      if (typeof render === 'function') render();
-      if (typeof renderList === 'function') renderList();
-      if (typeof renderFlashGrid === 'function') renderFlashGrid();
-      if (typeof updateProgress === 'function') updateProgress();
-    } catch (_) {}
+    try { if (typeof render === 'function') render(); } catch (_) {}
+    try { if (typeof renderList === 'function') renderList(); } catch (_) {}
+    try { if (typeof renderFlashGrid === 'function') renderFlashGrid(); } catch (_) {}
+    try { if (typeof updateProgress === 'function') updateProgress(); } catch (_) {}
+    try { if (typeof renderAuthPanel === 'function') renderAuthPanel(); } catch (_) {}
+    return true;
   }
 
-  async function pullVocabulary() {
-    const s = getState();
-    if (!s.client || !s.user || !s.user.id) return {ok:false, count:0};
+  async function pullVocabulary(user) {
+    const client = clientNow();
+    user = user || await currentUser();
+    if (!client || !user || !user.id) return {ok:false, count:0};
 
-    const {data, error} = await s.client
+    const {data, error} = await client
       .from('sb_words')
       .select('word,json_data')
-      .eq('user_id', s.user.id);
-
+      .eq('user_id', user.id);
     if (error) throw error;
 
-    const remote = (data || [])
-      .map(row => {
-        const d = row && row.json_data;
-        if (!d || typeof d !== 'object') return null;
-        return {...d, word: normaliseWord(d.word || row.word)};
-      })
-      .filter(d => d && d.word);
+    const remote = (data || []).map(row => {
+      const d = row && row.json_data;
+      if (!d || typeof d !== 'object') return null;
+      return {...d, word: normaliseWord(d.word || row.word)};
+    }).filter(d => d && d.word);
 
     applyVocabulary(remote);
+    console.info('[Cloud Sync] pulled vocabulary:', remote.length);
     return {ok:true, count:remote.length};
   }
 
-  function customWords() {
-    return localUserWords();
-  }
+  async function uploadAddedWords(user, force = false) {
+    const client = clientNow();
+    user = user || await currentUser();
+    if (!client || !user || !user.id || busy) return false;
 
-  async function uploadAddedWords(force = false) {
-    const s = getState();
-    if (!s.client || !s.user || !s.user.id || busy) return false;
-
-    const rows = customWords().map(d => ({
-      user_id: s.user.id,
+    const rows = localUserWords().map(d => ({
+      user_id: user.id,
       word: normaliseWord(d.word),
       json_data: {...d, generatedImage: undefined}
     })).filter(r => r.word);
-
     if (!rows.length) return false;
 
-    const fingerprint = rows
-      .map(r => wordKey(r.word) + '|' + JSON.stringify(r.json_data))
-      .sort()
-      .join('||');
-
+    const fingerprint = rows.map(r => wordKey(r.word) + '|' + JSON.stringify(r.json_data)).sort().join('||');
     if (!force && fingerprint === lastFingerprint) return false;
 
     busy = true;
     try {
-      const {error} = await s.client
-        .from('sb_words')
-        .upsert(rows, {onConflict:'user_id,word'});
+      const {error} = await client.from('sb_words').upsert(rows, {onConflict:'user_id,word'});
       if (error) throw error;
       lastFingerprint = fingerprint;
       try { sbLastSync = Date.now(); } catch (_) {}
-      try { if (typeof renderAuthPanel === 'function') renderAuthPanel(); } catch (_) {}
+      console.info('[Cloud Sync] uploaded vocabulary:', rows.length);
       return true;
     } catch (error) {
-      console.warn('[Cloud Sync] vocabulary upload failed:', error);
+      console.error('[Cloud Sync] vocabulary upload failed:', error);
       return false;
-    } finally {
-      busy = false;
-    }
+    } finally { busy = false; }
   }
 
   async function refreshFromCloud() {
-    const s = getState();
-    if (!s.client || !s.user || !s.user.id) return false;
+    const client = clientNow();
+    const user = await currentUser();
+    if (!client || !user) return false;
 
     try {
-      // Pull first. This prevents an empty/new device from overwriting or
-      // hiding the vocabulary already stored in the account.
-      await pullVocabulary();
+      // Never upload before pulling. A new device must not overwrite cloud data.
+      await pullVocabulary(user);
 
-      // Also use the existing sync routine for providers/progress/history.
-      if (typeof syncFromCloud === 'function') {
-        await syncFromCloud();
+      // Keep the app's other cloud state in sync if that function exists.
+      try {
+        if (typeof syncFromCloud === 'function') await syncFromCloud();
+      } catch (error) {
+        console.warn('[Cloud Sync] existing syncFromCloud failed:', error);
       }
 
-      // syncFromCloud may rebuild words[]; make one final authoritative
-      // vocabulary pull so the remote vocabulary is definitely present.
-      await pullVocabulary();
-      try { if (typeof renderAuthPanel === 'function') renderAuthPanel(); } catch (_) {}
+      // The existing sync routine can rebuild words[], so pull vocabulary again.
+      await pullVocabulary(user);
       return true;
     } catch (error) {
-      console.warn('[Cloud Sync] refresh failed:', error);
+      console.error('[Cloud Sync] refresh failed:', error);
       return false;
     }
   }
 
   async function boot() {
     await new Promise(r => setTimeout(r, WAIT));
-
-    for (let i = 0; i < 12; i++) {
-      const s = getState();
-      if (s.client && s.user && s.user.id) {
-        const userChanged = bootedForUser !== s.user.id;
-        if (userChanged) {
-          bootedForUser = s.user.id;
+    for (let i = 0; i < 15; i++) {
+      const user = await currentUser();
+      if (user && user.id) {
+        if (bootedForUser !== user.id) {
+          bootedForUser = user.id;
           await refreshFromCloud();
-          // Upload only after the remote pull/merge. This preserves words
-          // created offline on this device while still restoring cloud data.
-          await uploadAddedWords(true);
-          await pullVocabulary();
+          await uploadAddedWords(user, true);
+          await pullVocabulary(user);
         }
-        break;
+        return;
       }
       await new Promise(r => setTimeout(r, 1000));
     }
@@ -193,30 +186,23 @@
   window.cloudSyncNow = async function() {
     const ok = await refreshFromCloud();
     if (ok) {
-      await uploadAddedWords(true);
-      await pullVocabulary();
+      const user = await currentUser();
+      await uploadAddedWords(user, true);
+      await pullVocabulary(user);
     }
-    try { if (typeof render === 'function') render(); } catch (_) {}
     return ok;
   };
 
-  // Catch words added after the normal save/debounce path and restore cloud
-  // vocabulary if the app was resumed in another tab/device.
   setInterval(async () => {
-    const s = getState();
-    if (!s.client || !s.user || !s.user.id || busy) return;
-    await uploadAddedWords(false);
+    if (busy) return;
+    const user = await currentUser();
+    if (user) await uploadAddedWords(user, false);
   }, PERIOD);
 
   window.addEventListener('focus', () => { refreshFromCloud(); });
   window.addEventListener('pageshow', () => { refreshFromCloud(); });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshFromCloud();
-  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshFromCloud(); });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, {once:true});
-  } else {
-    boot();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
+  else boot();
 })();
