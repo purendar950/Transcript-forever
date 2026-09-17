@@ -32,9 +32,21 @@
     });
   }
 
+  function loadCloudReliability() {
+    if (window.__cloudSyncReliabilityLoaded) return;
+    window.__cloudSyncReliabilityLoaded = true;
+    const script = document.createElement('script');
+    script.src = '/js/cloud-sync-reliability.js?v=20260917';
+    script.async = false;
+    script.onload = () => console.info('[Cloud Sync] reliability layer loaded');
+    script.onerror = () => console.warn('[Cloud Sync] reliability layer failed to load');
+    document.head.appendChild(script);
+  }
+
   function init() {
     markPages();
     syncNav();
+    loadCloudReliability();
     const observer = new MutationObserver(() => {
       markPages();
       syncNav();
