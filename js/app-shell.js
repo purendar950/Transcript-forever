@@ -123,14 +123,27 @@
     if (window.__cloudSyncReliabilityLoaded) return;
     window.__cloudSyncReliabilityLoaded = true;
     const script = document.createElement('script');
-    script.src = '/js/cloud-sync-reliability.js?v=20260917-2';
+    script.src = '/js/cloud-sync-reliability.js?v=20260917-3';
     script.async = false;
-    script.onload = () => console.info('[Cloud Sync] reliability layer loaded');
+    script.onload = () => {
+      console.info('[Cloud Sync] reliability layer loaded');
+      loadCloudVocabDirect();
+    };
     script.onerror = () => {
       console.warn('[Cloud Sync] reliability layer failed to load');
       const status = document.getElementById('cloudSyncStatus');
       if (status) status.textContent = '⚠ Cloud sync module failed to load';
     };
+    document.head.appendChild(script);
+  }
+
+  function loadCloudVocabDirect() {
+    if (window.__cloudVocabDirectLoaded) return;
+    const script = document.createElement('script');
+    script.src = '/js/cloud-vocab-direct.js?v=20260917-1';
+    script.async = false;
+    script.onload = () => console.info('[Cloud Vocab] cloud-first storage layer loaded');
+    script.onerror = () => console.warn('[Cloud Vocab] cloud-first storage layer failed to load');
     document.head.appendChild(script);
   }
 
@@ -140,7 +153,6 @@
     ensureCloudSyncPanel();
     loadCloudReliability();
 
-    // Lightweight refresh only; no document-wide MutationObserver.
     setInterval(() => {
       ensureCloudSyncPanel();
       updateCloudSyncPanel();
