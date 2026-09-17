@@ -15,11 +15,6 @@
     catch (_) { return []; }
   }
 
-  function getHidden() {
-    try { return typeof hiddenSeed !== 'undefined' && hiddenSeed instanceof Set ? hiddenSeed : new Set(); }
-    catch (_) { return new Set(); }
-  }
-
   function saveImagesLocally() {
     try {
       const map = JSON.parse(localStorage.getItem(imageKey) || '{}');
@@ -59,6 +54,22 @@
     try { localStorage.removeItem('sscAIWords'); } catch (_) {}
   }
 
+  // From this point onward, vocabulary data must never be persisted in localStorage.
+  // Other localStorage keys (progress, settings, images, etc.) continue to work.
+  try {
+    localStorage.removeItem('sscAIWords');
+    const originalSetItem = Storage.prototype.setItem;
+    if (!Storage.prototype.__sscCloudVocabPatched) {
+      Storage.prototype.setItem = function(key, value) {
+        if (key === 'sscAIWords') return;
+        return originalSetItem.call(this, key, value);
+      };
+      Storage.prototype.__sscCloudVocabPatched = true;
+    }
+  } catch (error) {
+    console.warn('[Cloud Vocab] local vocabulary storage guard failed:', error);
+  }
+
   async function pushNow() {
     if (typeof window.syncToCloud === 'function') {
       await window.syncToCloud();
@@ -74,16 +85,13 @@
   const originalSave = typeof window.save === 'function' ? window.save : null;
   if (originalSave) {
     window.save = async function cloudFirstSave() {
-      // Preserve progress/settings/deletion bookkeeping and capture images locally.
       saveImagesLocally();
 
-      // The original save also updates non-vocabulary local state. Run it first,
-      // then immediately remove its vocabulary payload again.
+      // Preserve progress/settings/deletion bookkeeping. The storage guard above
+      // prevents the original save() from persisting the vocabulary payload.
       originalSave();
       removeLocalVocabulary();
 
-      // Upload the current vocabulary immediately; words are not intentionally
-      // persisted in localStorage. generatedImage is excluded by the RPC bridge.
       try {
         await pushNow();
         removeLocalVocabulary();
@@ -91,8 +99,6 @@
         console.info('[Cloud Vocab] word saved directly to Supabase');
         return true;
       } catch (error) {
-        // Keep no vocabulary copy in localStorage even on failure; the UI remains
-        // in memory so the user can retry Manual Sync without losing the word.
         removeLocalVocabulary();
         console.error('[Cloud Vocab] direct cloud save failed:', error);
         return false;
@@ -100,7 +106,6 @@
     };
   }
 
-  // The cloud pull replaces the in-memory word list. Reattach device-local images.
   const originalCloudSyncNow = window.cloudSyncNow;
   if (typeof originalCloudSyncNow === 'function') {
     window.cloudSyncNow = async function cloudFirstManualSync() {
